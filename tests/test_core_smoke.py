@@ -75,6 +75,13 @@ class CoreSmokeTests(unittest.TestCase):
         paths = {getattr(route, "path", "") for route in app.routes}
         self.assertIn("/trace", paths)
 
+    def test_langgraph_evaluate_imports_correct_stage(self):
+        from app.langgraph_agent import _import_stages
+        from app.recommendations import _stage_evaluate
+
+        stages = _import_stages()
+        self.assertIs(stages[-1], _stage_evaluate)
+
     def test_langgraph_graph_compiles(self):
         from app.langgraph_agent import build_recommendation_graph
         graph = build_recommendation_graph()

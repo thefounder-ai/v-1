@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
+import logging
 from typing import Any
 from pathlib import Path
 from urllib.parse import quote
@@ -69,6 +70,7 @@ from app.scheduler import shutdown_scheduler, start_scheduler
 
 load_dotenv()
 configure_logging()
+logger = logging.getLogger("skillorbit.main")
 
 
 @asynccontextmanager
@@ -583,6 +585,18 @@ async def generate_recommendation_endpoint(request: Request) -> dict:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(error),
+        ) from error
+    except Exception as error:
+        log_event(
+            logger,
+            logging.ERROR,
+            "recommendation_generate_failed",
+            error_type=type(error).__name__,
+            error=str(error),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="A grounded recommendation could not be produced.",
         ) from error
     return {
         "id": recommendation["id"],
