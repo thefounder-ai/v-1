@@ -279,8 +279,11 @@
     if (recStatus) recStatus.textContent = "Retrieving grounded resources…";
     const url = force ? "/api/recommendations/generate?force=true" : "/api/recommendations/generate";
     const res = await fetch(url, { method: "POST", credentials: "same-origin" });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Generation failed.");
+    const contentType = res.headers.get("content-type") || "";
+    const data = contentType.includes("application/json") ? await res.json() : null;
+    if (!res.ok) {
+      throw new Error((data && data.detail) || "Generation failed. Try again in a moment.");
+    }
     if (recStatus) recStatus.textContent = data.cached ? "Showing cached path." : "Path ready.";
     setTimeout(function () { window.location.reload(); }, 400);
   }

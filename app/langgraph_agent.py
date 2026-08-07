@@ -102,7 +102,7 @@ async def node_retrieve(state: PipelineState) -> PipelineState:
 async def node_evaluate(state: PipelineState) -> PipelineState:
     if state.get("failed"):
         return state
-    _, _, _, _, _stage_evaluate, _ = _import_stages()
+    _, _, _, _, _, _stage_evaluate = _import_stages()
     graph = state["graph"]
     relevant = _stage_evaluate(
         state["candidates"],
