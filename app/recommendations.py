@@ -319,6 +319,44 @@ async def _insert_recommendation(
         raise RecommendationError("Recommendation history is temporarily unavailable.") from error
 
 
+async def recommendation_api_payload(
+    recommendation: dict[str, Any],
+    *,
+    cached: bool = False,
+) -> dict[str, Any]:
+    """Serialize a stored recommendation for dashboard/API clients."""
+    items = list(recommendation.get("items") or [])
+    if items and not items[0].get("title"):
+        product_ids = [str(item["product_id"]) for item in items if item.get("product_id")]
+        products = await list_products_by_ids(product_ids)
+        product_map = {product["id"]: product for product in products}
+        enriched: list[dict[str, Any]] = []
+        for index, item in enumerate(items, start=1):
+            product = product_map.get(item.get("product_id"), {})
+            enriched.append({
+                **item,
+                "rank": item.get("rank") or index,
+                "title": product.get("title", "Learning resource"),
+                "category": product.get("category", ""),
+                "difficulty": product.get("difficulty", ""),
+            })
+        items = enriched
+    return {
+        "id": recommendation["id"],
+        "summary": recommendation["summary"],
+        "next_step": recommendation["next_step"],
+        "items": items,
+        "trace_id": recommendation.get("trace_id"),
+        "retrieval_metadata": recommendation.get("retrieval_metadata") or {},
+        "trigger_event_count": recommendation.get("trigger_event_count", 0),
+        "interest_snapshot": recommendation.get("interest_snapshot") or [],
+        "created_at": recommendation.get("created_at"),
+        "expires_at": recommendation.get("expires_at"),
+        "model": recommendation.get("model", "mesh"),
+        "cached": cached,
+    }
+
+
 async def generate_recommendation(
     access_token: str,
     user_id: str,

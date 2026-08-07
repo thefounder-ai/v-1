@@ -39,6 +39,7 @@ from app.recommendations import (
     RecommendationError,
     generate_recommendation,
     latest_recommendation,
+    recommendation_api_payload,
     recommendation_history,
     update_recommendation_status,
 )
@@ -567,15 +568,7 @@ async def generate_recommendation_endpoint(request: Request) -> dict:
         if not force:
             cached = await latest_recommendation(access_token, user["id"])
             if cached and within_cooldown(cached) and is_recommendation_fresh(cached):
-                return {
-                    "id": cached["id"],
-                    "summary": cached["summary"],
-                    "next_step": cached["next_step"],
-                    "items": cached.get("items", []),
-                    "trace_id": cached.get("trace_id"),
-                    "retrieval_metadata": cached.get("retrieval_metadata", {}),
-                    "cached": True,
-                }
+                return await recommendation_api_payload(cached, cached=True)
         recommendation = await generate_recommendation(
             access_token,
             user["id"],
@@ -598,15 +591,7 @@ async def generate_recommendation_endpoint(request: Request) -> dict:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="A grounded recommendation could not be produced.",
         ) from error
-    return {
-        "id": recommendation["id"],
-        "summary": recommendation["summary"],
-        "next_step": recommendation["next_step"],
-        "items": recommendation["items"],
-        "trace_id": recommendation.get("trace_id"),
-        "retrieval_metadata": recommendation.get("retrieval_metadata", {}),
-        "cached": False,
-    }
+    return await recommendation_api_payload(recommendation, cached=False)
 
 
 @app.post("/api/recommendations/{recommendation_id}/feedback", tags=["recommendations"])

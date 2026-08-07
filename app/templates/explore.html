@@ -42,7 +42,7 @@
         <option value="{{ option }}" {% if content_type == option %}selected{% endif %}>{{ option|replace("_", " ") }}</option>
         {% endfor %}
       </select>
-      <button class="button button-primary" type="submit">Search</button>
+      <button class="button button-primary" type="submit" id="catalog-search-btn">Search</button>
     </form>
 
     {% if error %}
@@ -73,4 +73,20 @@
   </main>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const ui = window.SkillOrbitUI;
+  const form = document.querySelector(".catalog-filters");
+  const searchBtn = document.getElementById("catalog-search-btn");
+  if (form && ui && searchBtn) {
+    form.addEventListener("submit", function () {
+      form.classList.add("is-submitting");
+      ui.setButtonLoading(searchBtn, true, "Searching…");
+    });
+  }
+})();
+</script>
 {% endblock %}

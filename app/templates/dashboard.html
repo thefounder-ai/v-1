@@ -52,18 +52,20 @@
     </div>
 
     <div class="dash-grid-v3">
-      <section class="dash-panel dash-panel-primary dash-rec-panel">
+      <section class="dash-panel dash-panel-primary dash-rec-panel" id="recommendation-panel">
         <div class="dash-panel-head">
           <div>
             <h2>Next best step</h2>
             <p class="panel-sub">Grounded in Qdrant retrieval · explained by Mesh</p>
           </div>
           <button class="button button-small button-light" id="generate-recommendation" type="button"
-            data-force="{% if interest_profile and interest_profile.refresh_recommended %}true{% else %}false{% endif %}">
+            data-force="{% if interest_profile and interest_profile.refresh_recommended %}true{% else %}false{% endif %}"
+            data-resend="{{ 'true' if resend_configured else 'false' }}">
             {% if recommendation %}Refresh path{% else %}Generate path{% endif %}
           </button>
         </div>
         <div id="recommendation-status" class="inline-status light" role="status"></div>
+        <div id="recommendation-panel-body">
         {% if recommendation_error %}
         <div class="form-message form-warning">{{ recommendation_error }}</div>
         {% elif recommendation %}
@@ -123,6 +125,7 @@
           <a class="button button-light" href="/explore">Explore catalog</a>
         </div>
         {% endif %}
+        </div>
       </section>
 
       <section class="dash-panel dash-signals-panel">
@@ -250,69 +253,37 @@
 {% block scripts %}
 <script>
 (function () {
+  const ui = window.SkillOrbitUI;
   const refreshBtn = document.getElementById("refresh-profile");
   const profileStatus = document.getElementById("profile-status");
-  if (refreshBtn) {
+  if (refreshBtn && ui) {
     refreshBtn.addEventListener("click", async function () {
-      refreshBtn.disabled = true;
-      profileStatus.textContent = "Reading your signals…";
+      ui.setButtonLoading(refreshBtn, true, "Syncing…");
+      profileStatus.textContent = "";
       try {
         const res = await fetch("/api/interest-profile/refresh", { method: "POST", credentials: "same-origin" });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "Refresh failed.");
-        profileStatus.textContent = "Profile updated.";
-        setTimeout(function () { window.location.reload(); }, 400);
-      } catch (e) {
-        profileStatus.textContent = e.message;
-        refreshBtn.disabled = false;
+        const parsed = await ui.parseJsonResponse(res);
+        if (!res.ok) throw new Error((parsed.data && parsed.data.detail) || "Refresh failed.");
+        profileStatus.textContent = "Signals synced.";
+        ui.showToast("Interest profile updated.", "success");
+      } catch (error) {
+        profileStatus.textContent = error.message;
+        ui.showToast(error.message, "error");
+      } finally {
+        ui.setButtonLoading(refreshBtn, false);
       }
     });
   }
 
   const genBtn = document.getElementById("generate-recommendation");
   const recStatus = document.getElementById("recommendation-status");
+  const recPanel = document.getElementById("recommendation-panel");
   const autoBanner = document.getElementById("auto-refresh-banner");
   const autoBtn = document.getElementById("auto-refresh-btn");
 
-  async function generatePath(force) {
-    if (genBtn) genBtn.disabled = true;
-    if (recStatus) recStatus.textContent = "Retrieving grounded resources…";
-    const url = force ? "/api/recommendations/generate?force=true" : "/api/recommendations/generate";
-    const res = await fetch(url, { method: "POST", credentials: "same-origin" });
-    const contentType = res.headers.get("content-type") || "";
-    const data = contentType.includes("application/json") ? await res.json() : null;
-    if (!res.ok) {
-      throw new Error((data && data.detail) || "Generation failed. Try again in a moment.");
-    }
-    if (recStatus) recStatus.textContent = data.cached ? "Showing cached path." : "Path ready.";
-    setTimeout(function () { window.location.reload(); }, 400);
-  }
-
-  if (genBtn) {
-    genBtn.addEventListener("click", async function () {
-      try {
-        await generatePath(genBtn.dataset.force === "true");
-      } catch (e) {
-        if (recStatus) recStatus.textContent = e.message;
-        genBtn.disabled = false;
-      }
-    });
-  }
-
-  if (autoBtn) {
-    autoBtn.addEventListener("click", function () {
-      generatePath(true).catch(function (e) {
-        if (recStatus) recStatus.textContent = e.message;
-      });
-    });
-  }
-
-  window.addEventListener("skillorbit:refresh-recommended", function () {
-    if (autoBanner) autoBanner.classList.remove("hidden");
-  });
-
-  const feedback = document.querySelector(".recommendation-feedback");
-  if (feedback) {
+  function bindFeedback() {
+    const feedback = document.querySelector(".recommendation-feedback");
+    if (!feedback) return;
     feedback.querySelectorAll("button").forEach(function (btn) {
       btn.addEventListener("click", async function () {
         feedback.querySelectorAll("button").forEach(function (b) { b.disabled = true; });
@@ -323,36 +294,91 @@
             credentials: "same-origin",
             body: JSON.stringify({ feedback: btn.dataset.feedback })
           });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.detail || "Could not save feedback.");
+          const parsed = await ui.parseJsonResponse(res);
+          if (!res.ok) throw new Error((parsed.data && parsed.data.detail) || "Could not save feedback.");
           feedback.innerHTML = "<span>Thanks — saved.</span>";
-        } catch (e) {
-          feedback.innerHTML = "<span>" + e.message + "</span>";
+          ui.showToast("Feedback saved.", "success");
+        } catch (error) {
+          feedback.innerHTML = "<span>" + error.message + "</span>";
         }
       });
     });
   }
 
-  const emailBtn = document.getElementById("email-recommendation");
-  const emailBox = document.querySelector(".recommendation-email");
-  if (emailBtn && emailBox) {
+  function bindEmail() {
+    const emailBtn = document.getElementById("email-recommendation");
+    const emailBox = document.querySelector(".recommendation-email");
+    if (!emailBtn || !emailBox) return;
     emailBtn.addEventListener("click", async function () {
-      emailBtn.disabled = true;
-      emailBtn.textContent = "Sending…";
+      ui.setButtonLoading(emailBtn, true, "Sending…");
       try {
         const res = await fetch("/api/recommendations/" + emailBox.dataset.recommendationId + "/email", {
           method: "POST",
           credentials: "same-origin"
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "Email failed.");
+        const parsed = await ui.parseJsonResponse(res);
+        if (!res.ok) throw new Error((parsed.data && parsed.data.detail) || "Email failed.");
         emailBtn.textContent = "Sent ✓";
-      } catch (e) {
-        emailBtn.textContent = e.message;
-        emailBtn.disabled = false;
+        ui.showToast("Path emailed successfully.", "success");
+      } catch (error) {
+        ui.setButtonLoading(emailBtn, false);
+        ui.showToast(error.message, "error");
       }
     });
   }
+
+  window.SkillOrbitDashboard = { bindFeedback: bindFeedback, bindEmail: bindEmail };
+  bindFeedback();
+  bindEmail();
+
+  async function generatePath(force) {
+    if (!ui || !genBtn) return;
+    const stopLoader = ui.startAiLoader(recPanel);
+    ui.setButtonLoading(genBtn, true, force ? "Refreshing…" : "Generating…");
+    if (recStatus) recStatus.textContent = "";
+    try {
+      const url = force ? "/api/recommendations/generate?force=true" : "/api/recommendations/generate";
+      const res = await fetch(url, { method: "POST", credentials: "same-origin" });
+      const parsed = await ui.parseJsonResponse(res);
+      if (!res.ok) {
+        throw new Error((parsed.data && parsed.data.detail) || "Generation failed. Try again in a moment.");
+      }
+      ui.renderRecommendationPanel(parsed.data, {
+        resendConfigured: genBtn.dataset.resend === "true"
+      });
+      if (recStatus) {
+        recStatus.textContent = parsed.data.cached ? "Showing your latest cached path." : "Your new path is ready.";
+      }
+      ui.showToast(parsed.data.cached ? "Loaded cached path." : "Learning path generated.", "success");
+      if (autoBanner) autoBanner.classList.add("hidden");
+    } finally {
+      stopLoader();
+      ui.setButtonLoading(genBtn, false);
+      if (genBtn) genBtn.textContent = "Refresh path";
+    }
+  }
+
+  if (genBtn) {
+    genBtn.addEventListener("click", function () {
+      generatePath(genBtn.dataset.force === "true").catch(function (error) {
+        if (recStatus) recStatus.textContent = error.message;
+        ui.showToast(error.message, "error");
+      });
+    });
+  }
+
+  if (autoBtn) {
+    autoBtn.addEventListener("click", function () {
+      generatePath(true).catch(function (error) {
+        if (recStatus) recStatus.textContent = error.message;
+        ui.showToast(error.message, "error");
+      });
+    });
+  }
+
+  window.addEventListener("skillorbit:refresh-recommended", function () {
+    if (autoBanner) autoBanner.classList.remove("hidden");
+  });
 })();
 </script>
 {% endblock %}

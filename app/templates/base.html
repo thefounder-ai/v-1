@@ -19,6 +19,7 @@
   </head>
   <body class="{% block body_class %}{% endblock %}" data-authenticated="{{ 'true' if user else 'false' }}">
     {% block content %}{% endblock %}
+    <script src="/static/ui.js" defer></script>
     <script src="/static/app.js" defer></script>
     <script src="/static/tracking.js" defer></script>
     {% block scripts %}{% endblock %}

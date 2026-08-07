@@ -23,8 +23,10 @@
         <div class="detail-actions">
           {% if product.source_url %}
           <a class="button button-primary" href="{{ product.source_url }}" target="_blank" rel="noreferrer" id="external-resource-link" data-resource-id="{{ product.id }}">Open resource ↗</a>
+          {% elif user %}
+          <button class="button button-primary" type="button" id="add-to-path-btn" data-resource-id="{{ product.id }}">Add to my path</button>
           {% else %}
-          <a class="button button-primary" href="/dashboard">Add to my path →</a>
+          <a class="button button-primary" href="/login">Sign in to add to path</a>
           {% endif %}
           {% if user %}
           <button class="button button-quiet" type="button" id="bookmark-btn" data-resource-id="{{ product.id }}">★ Save to library</button>
@@ -108,6 +110,7 @@
 {% block scripts %}
 <script>
 (function () {
+  const ui = window.SkillOrbitUI;
   const productTitle = {{ product.title|tojson }};
   const productId = {{ product.id|tojson }};
 
@@ -117,7 +120,38 @@
       window.skillOrbitTrack("bookmark_added", { resource_id: bookmarkBtn.dataset.resourceId });
       bookmarkBtn.textContent = "★ Saved";
       bookmarkBtn.disabled = true;
+      bookmarkBtn.classList.add("is-success");
       appendSignal("Saved", productTitle);
+      if (ui) ui.showToast("Saved to your library.", "success");
+    });
+  }
+
+  const addBtn = document.getElementById("add-to-path-btn");
+  if (addBtn && ui) {
+    addBtn.addEventListener("click", async function () {
+      ui.setButtonLoading(addBtn, true, "Adding…");
+      const body = new FormData();
+      body.append("progress_status", "started");
+      try {
+        const res = await fetch("/api/progress/" + addBtn.dataset.resourceId, {
+          method: "POST",
+          body: body,
+          credentials: "same-origin"
+        });
+        const parsed = await ui.parseJsonResponse(res);
+        if (!res.ok) {
+          throw new Error((parsed.data && parsed.data.detail) || "Could not add to path.");
+        }
+        addBtn.classList.remove("is-loading");
+        addBtn.classList.add("is-success");
+        addBtn.disabled = true;
+        addBtn.textContent = "On your path ✓";
+        appendSignal("Started", productTitle);
+        ui.showToast("Added to your learning path.", "success");
+      } catch (error) {
+        ui.setButtonLoading(addBtn, false);
+        ui.showToast(error.message, "error");
+      }
     });
   }
 
@@ -130,24 +164,31 @@
   }
 
   const completeForm = document.getElementById("complete-form");
-  if (completeForm) {
+  if (completeForm && ui) {
     completeForm.addEventListener("submit", async function (event) {
       event.preventDefault();
       const button = completeForm.querySelector("button");
-      button.disabled = true;
-      button.textContent = "Saving…";
-      const body = new FormData(completeForm);
-      const res = await fetch(completeForm.action, {
-        method: "POST",
-        body: body,
-        credentials: "same-origin"
-      });
-      if (res.ok) {
+      ui.setButtonLoading(button, true, "Saving…");
+      try {
+        const res = await fetch(completeForm.action, {
+          method: "POST",
+          body: new FormData(completeForm),
+          credentials: "same-origin"
+        });
+        const parsed = await ui.parseJsonResponse(res);
+        if (!res.ok) {
+          throw new Error((parsed.data && parsed.data.detail) || "Could not save progress.");
+        }
+        button.classList.remove("is-loading");
+        button.classList.add("is-success");
+        button.disabled = true;
         button.textContent = "Completed ✓";
         appendSignal("Completed", productTitle);
-      } else {
+        ui.showToast("Marked as complete.", "success");
+      } catch (error) {
+        ui.setButtonLoading(button, false);
         button.textContent = "Try again";
-        button.disabled = false;
+        ui.showToast(error.message, "error");
       }
     });
   }

@@ -18,11 +18,12 @@
     {% endif %}
 
     {% if recommendation %}
-    <section class="rec-detail-card">
+    <section class="rec-detail-card" id="rec-detail-card">
       <div class="rec-detail-head">
         <span class="chip chip-active">Current</span>
         <button class="text-button" id="regenerate" type="button">Refresh path ↻</button>
       </div>
+      <div id="rec-detail-body">
       <p class="rec-summary dark">{{ recommendation.summary }}</p>
       <div class="rec-next-box dark">
         <strong>Next step</strong>
@@ -43,6 +44,7 @@
         {% endfor %}
       </ol>
       <p class="meta-line">Model {{ recommendation.model }} · {{ recommendation.trigger_event_count }} signals</p>
+      </div>
     </section>
     {% endif %}
 
@@ -91,24 +93,37 @@
   </main>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
 <script>
-document.getElementById("regenerate")?.addEventListener("click", async function () {
-  const btn = this;
-  btn.disabled = true;
-  try {
-    const res = await fetch("/api/recommendations/generate?force=true", {
-      method: "POST",
-      credentials: "same-origin"
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.detail || "Failed");
+(function () {
+  const ui = window.SkillOrbitUI;
+  const regenBtn = document.getElementById("regenerate");
+  const recCard = document.getElementById("rec-detail-card");
+  if (!regenBtn || !ui) return;
+
+  regenBtn.addEventListener("click", async function () {
+    const stopLoader = ui.startAiLoader(recCard);
+    ui.setButtonLoading(regenBtn, true, "Refreshing…");
+    try {
+      const res = await fetch("/api/recommendations/generate?force=true", {
+        method: "POST",
+        credentials: "same-origin"
+      });
+      const parsed = await ui.parseJsonResponse(res);
+      if (!res.ok) {
+        throw new Error((parsed.data && parsed.data.detail) || "Could not refresh path.");
+      }
+      ui.renderRecommendationsDetail(parsed.data);
+      ui.showToast("Learning path refreshed.", "success");
+    } catch (error) {
+      ui.showToast(error.message, "error");
+    } finally {
+      stopLoader();
+      ui.setButtonLoading(regenBtn, false);
     }
-    window.location.reload();
-  } catch (e) {
-    alert(e.message);
-    btn.disabled = false;
-  }
-});
+  });
+})();
 </script>
 {% endblock %}

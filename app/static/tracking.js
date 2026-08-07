@@ -29,6 +29,10 @@
       event_type: eventType,
       occurred_at: new Date().toISOString()
     }, details || {}));
+    if (eventType === "bookmark_added") {
+      flush();
+      return;
+    }
     if (queue.length >= batchSize) flush();
     else scheduleFlush();
   }
