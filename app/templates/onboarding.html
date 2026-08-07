@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="auth-shell">
+  <header class="site-header container">
+    <a class="brand" href="/" aria-label="SkillOrbit home">
+      <span class="brand-mark" aria-hidden="true">S</span>
+      <span>SkillOrbit</span>
+    </a>
+    <span class="account-label">{{ email }}</span>
+  </header>
+
+  <main class="onboarding-main container">
+    <div class="onboarding-heading">
+      <p class="eyebrow"><span class="eyebrow-dot"></span> Step 1 of 1</p>
+      <h1>Give your learning<br /><em>a direction.</em></h1>
+      <p>A little context helps us make your next recommendation feel genuinely useful.</p>
+    </div>
+
+    <form method="post" action="/onboarding" class="onboarding-form">
+      {% if error %}
+      <div class="form-message form-error" role="alert">{{ error }}</div>
+      {% endif %}
+      <fieldset>
+        <legend>What are you working toward?</legend>
+        <div class="choice-grid">
+          <label class="choice-card"><input type="radio" name="career_goal" value="AI Engineer" required /><span><strong>AI Engineer</strong><small>Build intelligent products</small></span></label>
+          <label class="choice-card"><input type="radio" name="career_goal" value="Backend Developer" /><span><strong>Backend Developer</strong><small>Build reliable APIs</small></span></label>
+          <label class="choice-card"><input type="radio" name="career_goal" value="Generative AI Builder" /><span><strong>Generative AI Builder</strong><small>Work with LLMs and RAG</small></span></label>
+          <label class="choice-card"><input type="radio" name="career_goal" value="Data/ML Foundations" /><span><strong>Data/ML Foundations</strong><small>SQL, pipelines, evaluation</small></span></label>
+          <label class="choice-card"><input type="radio" name="career_goal" value="Production AI Product Builder" /><span><strong>AI Product Builder</strong><small>Turn ideas into products</small></span></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Where are you starting from?</legend>
+        <div class="choice-inline">
+          <label class="choice-pill"><input type="radio" name="current_level" value="Beginner" required /><span>Beginner</span></label>
+          <label class="choice-pill"><input type="radio" name="current_level" value="Intermediate" /><span>Intermediate</span></label>
+          <label class="choice-pill"><input type="radio" name="current_level" value="Advanced" /><span>Advanced</span></label>
+        </div>
+      </fieldset>
+      <label class="minutes-field">
+        How much time can you give each week?
+        <select name="weekly_minutes" required>
+          <option value="" selected disabled>Select a pace</option>
+          <option value="120">About 2 hours</option>
+          <option value="300">About 5 hours</option>
+          <option value="600">About 10 hours</option>
+          <option value="1200">More than 10 hours</option>
+        </select>
+      </label>
+      <button class="button button-primary" type="submit">Build my starting path <span aria-hidden="true">→</span></button>
+    </form>
+  </main>
+</div>
+{% endblock %}

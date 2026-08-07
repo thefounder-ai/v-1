@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="site-shell app-layout app-layout-sidebar">
+  {% set active = 'path' %}
+  {% include "partials/app-nav.html" %}
+
+  <div class="app-main">
+  <main class="page-main container">
+    <header class="page-header">
+      <p class="eyebrow"><span class="eyebrow-dot"></span> Structured progression</p>
+      <h1>Your <em>{{ career_goal or 'learning' }}</em> path</h1>
+      <p class="page-lede">
+        {% if career_goal %}
+        Resources aligned to your onboarding goal—browse, bookmark, and let SkillOrbit refine your next step.
+        {% else %}
+        Complete onboarding to unlock a goal-aligned sequence.
+        {% endif %}
+      </p>
+    </header>
+
+    {% if path_error %}
+    <div class="form-message form-error">{{ path_error }}</div>
+    {% elif path_products %}
+    {% if progress_stats and progress_stats.path_total %}
+    <div class="path-progress-ring-wrap">
+      <div class="progress-ring" style="--progress: {{ progress_stats.path_percent }}%">
+        <span>{{ progress_stats.path_percent }}%</span>
+      </div>
+      <div>
+        <strong>{{ progress_stats.path_completed }} of {{ progress_stats.path_total }} completed</strong>
+        <p>Mark resources complete as you go—your dashboard path % updates instantly.</p>
+      </div>
+    </div>
+    {% endif %}
+    <div class="path-progress">
+      <span>{{ path_products|length }} resources on your orbit</span>
+      <a class="text-link" href="/explore?career_goal={{ career_goal|urlencode }}">Filter in explore ↗</a>
+    </div>
+    <div class="path-grid">
+      {% for product in path_products %}
+      <article class="path-card{% if product.id in completed_ids %} is-complete{% endif %}">
+        <span class="path-step">{{ loop.index }}</span>
+        <div>
+          <span class="resource-type">{{ product.content_type|replace('_', ' ') }}</span>
+          <h2><a href="/resource/{{ product.id }}">{{ product.title }}</a></h2>
+          <p>{{ product.short_summary }}</p>
+          <div class="path-meta">
+            <span>{{ product.difficulty }}</span>
+            <span>{{ product.duration_minutes }} min</span>
+          </div>
+        </div>
+        <a class="path-link" href="/resource/{{ product.id }}" aria-label="Open {{ product.title }}">↗</a>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <span class="empty-mark">◎</span>
+      <h2>No path yet</h2>
+      <p>Pick a career goal during onboarding or explore the catalog to build signals.</p>
+      <a class="button button-primary" href="/onboarding">Set your goal →</a>
+    </div>
+    {% endif %}
+
+    {% if career_goals %}
+    <section class="path-switcher">
+      <h3>Explore other directions</h3>
+      <div class="chip-row">
+        {% for goal in career_goals %}
+        <a class="chip chip-link" href="/explore?career_goal={{ goal|urlencode }}">{{ goal }}</a>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+  </main>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,5 @@
+- [SkillOrbit product direction](skillorbit-product-direction.md) — behavioral AI learning navigator with Supabase, Qdrant, Mesh API, and curated/original resources.
+- [Mesh and Qdrant integration](mesh-qdrant-integration.md) — discover Mesh embedding models from `/models`; Qdrant filtered payload fields need indexes.
+- [Recommendation observability](recommendation-observability.md) — keep the recommendation agent explicit and lightweight, with secret-free stage traces.
+- [Recommendation email release gate](email-delivery-release-gate.md) — email is live only after Supabase delivery logs and a verified Resend sender both pass.
+- [GitHub push history](github-push-history.md) — workflow files require extra token scope; preserve and verify phase-by-phase history when publishing.

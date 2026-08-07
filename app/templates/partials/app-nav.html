@@ -1,0 +1,40 @@
+<aside class="app-sidebar" data-app-sidebar>
+  <a class="brand sidebar-brand" href="/" aria-label="SkillOrbit home">
+    <span class="brand-mark" aria-hidden="true">S</span>
+    <span>SkillOrbit</span>
+  </a>
+  <nav class="sidebar-nav" data-app-nav aria-label="Application navigation">
+    <a href="/explore"{% if active == 'explore' %} class="is-active"{% endif %}>Explore</a>
+    {% if user %}
+    <a href="/learning-path"{% if active == 'path' %} class="is-active"{% endif %}>Learning path</a>
+    <a href="/bookmarks"{% if active == 'bookmarks' %} class="is-active"{% endif %}>Saved</a>
+    <a href="/dashboard"{% if active == 'dashboard' %} class="is-active"{% endif %}>Dashboard</a>
+    <a href="/recommendations"{% if active == 'recommendations' %} class="is-active"{% endif %}>History</a>
+    <a href="/trace"{% if active == 'trace' %} class="is-active"{% endif %}>Trace</a>
+    {% if profile and profile.role == 'admin' %}
+    <a href="/admin/products"{% if active == 'admin' %} class="is-active"{% endif %}>Admin</a>
+  <a href="/admin/sync-health"{% if active == 'sync' %} class="is-active"{% endif %}>Sync health</a>
+    {% endif %}
+    {% else %}
+    <a href="/login">Sign in</a>
+    <a class="button button-small button-primary" href="/signup">Get started</a>
+    {% endif %}
+  </nav>
+  {% if user %}
+  <div class="sidebar-footer">
+    <a class="sidebar-mesh-link" href="https://developers.meshapi.ai" target="_blank" rel="noreferrer">Mesh observability ↗</a>
+    <form method="post" action="/auth/logout" class="nav-logout">
+      <button class="button button-small button-quiet" type="submit">Sign out</button>
+    </form>
+  </div>
+  {% endif %}
+</aside>
+<header class="app-header container app-header-mobile">
+  <a class="brand" href="/" aria-label="SkillOrbit home">
+    <span class="brand-mark" aria-hidden="true">S</span>
+    <span>SkillOrbit</span>
+  </a>
+  <button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-label="Open menu">
+    <span></span><span></span><span></span>
+  </button>
+</header>

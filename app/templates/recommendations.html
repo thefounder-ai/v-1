@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="site-shell app-layout app-layout-sidebar">
+  {% set active = 'recommendations' %}
+  {% include "partials/app-nav.html" %}
+
+  <div class="app-main">
+  <main class="page-main container">
+    <header class="page-header">
+      <p class="eyebrow"><span class="eyebrow-dot"></span> Grounded history</p>
+      <h1>Your <em>recommendations</em></h1>
+      <p class="page-lede">Every path is stored with trigger signals, retrieval metadata, and catalog-grounded reasons.</p>
+    </header>
+
+    {% if error %}
+    <div class="form-message form-warning">{{ error }}</div>
+    {% endif %}
+
+    {% if recommendation %}
+    <section class="rec-detail-card">
+      <div class="rec-detail-head">
+        <span class="chip chip-active">Current</span>
+        <button class="text-button" id="regenerate" type="button">Refresh path ↻</button>
+      </div>
+      <p class="rec-summary dark">{{ recommendation.summary }}</p>
+      <div class="rec-next-box dark">
+        <strong>Next step</strong>
+        <span>{{ recommendation.next_step }}</span>
+      </div>
+      <ol class="rec-items rec-items-dark">
+        {% for item in recommendation['items'] %}
+        <li>
+          <a href="/resource/{{ item.product_id }}">
+            <span class="rec-rank">{{ item.rank }}</span>
+            <span class="rec-body">
+              <strong>{{ item.title }}</strong>
+              <em>{{ item.reason }}</em>
+            </span>
+            <span class="rec-arrow">↗</span>
+          </a>
+        </li>
+        {% endfor %}
+      </ol>
+      <p class="meta-line">Model {{ recommendation.model }} · {{ recommendation.trigger_event_count }} signals</p>
+    </section>
+    {% endif %}
+
+    {% if recommendation and previous_recommendation %}
+    <section class="rec-diff-full">
+      <h2>Before vs after</h2>
+      <div class="rec-diff-grid">
+        <article class="rec-diff-card">
+          <p class="aside-label">Previous path</p>
+          <strong>{{ previous_recommendation.summary }}</strong>
+          <p>{{ previous_recommendation.next_step }}</p>
+          <small>{{ previous_recommendation.created_at[:16]|replace("T", " ") }} · {{ previous_recommendation.trigger_event_count }} signals</small>
+        </article>
+        <article class="rec-diff-card rec-diff-card-now">
+          <p class="aside-label">Current path</p>
+          <strong>{{ recommendation.summary }}</strong>
+          <p>{{ recommendation.next_step }}</p>
+          <small>{{ recommendation.created_at[:16]|replace("T", " ") }} · {{ recommendation.trigger_event_count }} signals</small>
+        </article>
+      </div>
+    </section>
+    {% endif %}
+
+    {% if recommendation_history %}
+    <section class="history-full">
+      <h2>History</h2>
+      {% for item in recommendation_history %}
+      <article class="history-full-row">
+        <time>{{ item.created_at[:16]|replace("T", " ") }}</time>
+        <div>
+          <strong>{{ item.summary }}</strong>
+          <p>{{ item.next_step }}</p>
+          <small>{{ item.trigger_event_count }} signals · {{ item.status|title }}</small>
+        </div>
+      </article>
+      {% endfor %}
+    </section>
+    {% elif not recommendation %}
+    <div class="empty-state">
+      <span class="empty-mark">◎</span>
+      <h2>No recommendations yet</h2>
+      <p>Explore the catalog, then generate a path from your dashboard.</p>
+      <a class="button button-primary" href="/dashboard">Go to dashboard →</a>
+    </div>
+    {% endif %}
+  </main>
+  </div>
+</div>
+<script>
+document.getElementById("regenerate")?.addEventListener("click", async function () {
+  const btn = this;
+  btn.disabled = true;
+  try {
+    const res = await fetch("/api/recommendations/generate?force=true", {
+      method: "POST",
+      credentials: "same-origin"
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.detail || "Failed");
+    }
+    window.location.reload();
+  } catch (e) {
+    alert(e.message);
+    btn.disabled = false;
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block body_class %}page-explore{% endblock %}
+
+{% block content %}
+<div class="site-shell app-layout app-layout-sidebar">
+  {% set active = 'explore' %}
+  {% include "partials/app-nav.html" %}
+
+  <div class="app-main">
+  <main class="catalog-main container">
+    <div class="catalog-heading">
+      <div>
+        <p class="eyebrow"><span class="eyebrow-dot"></span> Learning marketplace</p>
+        <h1>Browse by <em>category.</em></h1>
+        <p>Semantic search via Qdrant + Mesh embeddings. Filters use live Supabase metadata.</p>
+      </div>
+      <div class="catalog-count"><strong>{{ products|length }}</strong><span>resources<br />in view</span></div>
+    </div>
+
+    <div class="category-pills">
+      <a class="category-pill{% if not career_goal %} is-active{% endif %}" href="/explore{% if search %}?search={{ search|urlencode }}{% endif %}">All paths</a>
+      {% for goal in career_goals %}
+      <a class="category-pill{% if career_goal == goal %} is-active{% endif %}"
+         href="/explore?career_goal={{ goal|urlencode }}{% if search %}&search={{ search|urlencode }}{% endif %}">{{ goal }}</a>
+      {% endfor %}
+    </div>
+
+    <form class="catalog-filters marketplace-filters" method="get" action="/explore">
+      {% if career_goal %}<input type="hidden" name="career_goal" value="{{ career_goal }}" />{% endif %}
+      <label class="search-field search-field-lg"><span aria-hidden="true">⌕</span><input name="search" value="{{ search }}" placeholder="Search courses, topics, tools…" /></label>
+      <select name="category" aria-label="Filter by category">
+        <option value="">All categories</option>
+        {% for option in categories %}<option value="{{ option }}" {% if category == option %}selected{% endif %}>{{ option }}</option>{% endfor %}
+      </select>
+      <select name="difficulty" aria-label="Filter by difficulty">
+        <option value="">Any level</option>
+        {% for option in ["Beginner", "Intermediate", "Advanced"] %}<option value="{{ option }}" {% if difficulty == option %}selected{% endif %}>{{ option }}</option>{% endfor %}
+      </select>
+      <select name="content_type" aria-label="Filter by type">
+        <option value="">All types</option>
+        {% for option in ["original_module", "project", "documentation", "tutorial", "external_course"] %}
+        <option value="{{ option }}" {% if content_type == option %}selected{% endif %}>{{ option|replace("_", " ") }}</option>
+        {% endfor %}
+      </select>
+      <button class="button button-primary" type="submit">Search</button>
+    </form>
+
+    {% if error %}
+    <div class="catalog-message form-error" role="alert">{{ error }}</div>
+    {% elif products %}
+    <div class="resource-grid marketplace-grid">
+      {% for product in products %}
+      <article class="resource-card marketplace-card">
+        <a href="/resource/{{ product.id }}" class="marketplace-card-visual" aria-hidden="true">
+          <span class="marketplace-code">{{ product.slug[:3]|upper }}</span>
+          <span class="resource-type">{{ product.content_type|replace("_", " ") }}</span>
+        </a>
+        <div class="resource-card-body">
+          <p class="resource-category">{{ product.category|upper }}</p>
+          <h2><a href="/resource/{{ product.id }}">{{ product.title }}</a></h2>
+          <p>{{ product.short_summary }}</p>
+        </div>
+        <div class="resource-card-bottom">
+          <span class="marketplace-meta">{{ product.difficulty }} · {{ product.duration_minutes // 60 }}h</span>
+          <span class="marketplace-price">{{ product.price_label }}</span>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state"><span class="empty-mark">○</span><h2>No matches</h2><p>Try a broader search or clear filters.</p><a class="text-link" href="/explore">Clear filters ↗</a></div>
+    {% endif %}
+  </main>
+  </div>
+</div>
+{% endblock %}

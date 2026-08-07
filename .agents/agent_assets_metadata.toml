@@ -1,0 +1,9 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "rgZtDJ1G_UUKPnEvAxzUU"
+uri = "file://PLAN_DOT_TECH.md"
+type = "text"
+title = "Plan Dot Tech — SkillOrbit master plan"
+description = "Standalone source-of-truth plan with product vision, architecture, course sourcing policy, phased roadmap, review gates, and continuation instructions."

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="site-shell app-layout app-layout-sidebar">
+  {% set active = 'sync' %}
+  {% include "partials/app-nav.html" %}
+
+  <div class="app-main">
+  <main class="page-main container">
+    <header class="page-header row-header">
+      <div>
+        <p class="eyebrow"><span class="eyebrow-dot"></span> Vector index</p>
+        <h1>Sync <em>health</em></h1>
+        <p class="page-lede">Supabase catalog rows and Qdrant points should stay aligned for grounded retrieval.</p>
+      </div>
+      <a class="button button-quiet" href="/admin/products">Back to catalog ↗</a>
+    </header>
+
+    {% if error %}
+    <div class="form-message form-error">{{ error }}</div>
+    {% else %}
+    <div class="sync-summary-grid">
+      <div class="sync-stat"><strong>{{ summary.total }}</strong><span>Total</span></div>
+      <div class="sync-stat"><strong>{{ summary.active }}</strong><span>Active</span></div>
+      <div class="sync-stat ok"><strong>{{ summary.synced }}</strong><span>Synced</span></div>
+      <div class="sync-stat warn"><strong>{{ summary.pending }}</strong><span>Pending</span></div>
+      <div class="sync-stat bad"><strong>{{ summary.failed }}</strong><span>Failed</span></div>
+      <div class="sync-stat"><strong>{{ summary.inactive }}</strong><span>Inactive</span></div>
+    </div>
+
+    {% if problem_rows %}
+    <section class="sync-problems">
+      <h2>Needs attention</h2>
+      <table class="admin-table">
+        <thead><tr><th>Resource</th><th>Status</th><th>Error</th><th></th></tr></thead>
+        <tbody>
+          {% for product in problem_rows %}
+          <tr>
+            <td><strong>{{ product.title }}</strong></td>
+            <td><span class="vector-status vector-{{ product.vector_sync_status }}">{{ product.vector_sync_status }}</span></td>
+            <td><small>{{ product.vector_sync_error or '—' }}</small></td>
+            <td><a href="/admin/products/{{ product.id }}/edit">Edit ↗</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    {% else %}
+    <div class="form-message form-notice">All active resources are synced with Qdrant.</div>
+    {% endif %}
+    {% endif %}
+  </main>
+  </div>
+</div>
+{% endblock %}

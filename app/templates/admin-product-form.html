@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="site-shell app-layout app-layout-sidebar">
+  {% set active = 'admin' %}
+  {% include "partials/app-nav.html" %}
+
+  <div class="app-main">
+  <main class="admin-form-main container">
+    <div class="admin-form-heading"><p class="eyebrow"><span class="eyebrow-dot"></span> {{ "Edit resource" if product else "New resource" }}</p><h1>{{ "Keep the catalog current." if product else "Add something<br /><em>worth learning.</em>" }}</h1><p>{{ "Update the context learners will use to decide if this is their next step." if product else "Keep the source clear, the summary original, and the learning outcome concrete." }}</p></div>
+    <form class="admin-resource-form" method="post" action="{{ '/admin/products/' ~ product.id ~ '/edit' if product else '/admin/products/new' }}">
+      {% if error %}<div class="form-message form-error" role="alert">{{ error }}</div>{% endif %}
+      <div class="form-row"><label>Title<input name="title" value="{{ product.title if product else '' }}" required maxlength="140" /></label><label>Slug<input name="slug" value="{{ product.slug if product else '' }}" placeholder="clear-resource-slug" required maxlength="150" /></label></div>
+      <label>Short summary<textarea name="short_summary" rows="2" required maxlength="240">{{ product.short_summary if product else '' }}</textarea></label>
+      <label>Description<textarea name="description" rows="5" required maxlength="1200">{{ product.description if product else '' }}</textarea></label>
+      <div class="form-row"><label>Category<input name="category" value="{{ product.category if product else '' }}" placeholder="Generative AI" required /></label><label>Provider<input name="provider" value="{{ product.provider if product else 'SkillOrbit' }}" required /></label></div>
+      <div class="form-row form-row-three"><label>Type<select name="content_type" required>{% for option in ["original_module", "external_course", "documentation", "tutorial", "project", "learning_path"] %}<option value="{{ option }}" {% if product and product.content_type == option %}selected{% endif %}>{{ option|replace("_", " ")|title }}</option>{% endfor %}</select></label><label>Difficulty<select name="difficulty" required>{% for option in ["Beginner", "Intermediate", "Advanced"] %}<option value="{{ option }}" {% if product and product.difficulty == option %}selected{% endif %}>{{ option }}</option>{% endfor %}</select></label><label>Minutes<input type="number" name="duration_minutes" min="1" value="{{ product.duration_minutes if product else 180 }}" required /></label></div>
+      <label>Source URL <span class="field-note">(optional for original SkillOrbit modules)</span><input type="url" name="source_url" value="{{ product.source_url if product and product.source_url else '' }}" placeholder="https://..." /></label>
+      <label>License / attribution<input name="license_info" value="{{ product.license_info if product else 'Original SkillOrbit content' }}" required /></label>
+      <div class="form-row form-row-textarea"><label>Skills <span class="field-note">comma-separated</span><textarea name="skills" rows="2" required>{% if product %}{{ product.skills|join(', ') }}{% endif %}</textarea></label><label>Career goals <span class="field-note">comma-separated</span><textarea name="career_goals" rows="2" required>{% if product %}{{ product.career_goals|join(', ') }}{% endif %}</textarea></label></div>
+      <div class="form-row form-row-textarea"><label>Prerequisites <span class="field-note">comma-separated, optional</span><textarea name="prerequisites" rows="2">{% if product %}{{ product.prerequisites|join(', ') }}{% endif %}</textarea></label><label>Learning outcomes <span class="field-note">comma-separated</span><textarea name="learning_outcomes" rows="2" required>{% if product %}{{ product.learning_outcomes|join(', ') }}{% endif %}</textarea></label></div>
+      <div class="admin-form-actions"><a class="button button-quiet" href="/admin/products">Cancel</a><button class="button button-primary" type="submit">{{ "Save changes" if product else "Create resource" }} <span aria-hidden="true">→</span></button></div>
+    </form>
+  </main>
+  </div>
+</div>
+{% endblock %}

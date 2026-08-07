@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block body_class %}page-auth{% endblock %}
+
+{% block content %}
+<div class="auth-shell">
+  <header class="site-header container">
+    <a class="brand" href="/" aria-label="SkillOrbit home">
+      <span class="brand-mark" aria-hidden="true">S</span>
+      <span>SkillOrbit</span>
+    </a>
+    <a class="text-link" href="/">Back to home <span aria-hidden="true">↗</span></a>
+  </header>
+
+  <main class="auth-main container">
+    <section class="auth-intro">
+      <p class="eyebrow"><span class="eyebrow-dot"></span> Your learning direction</p>
+      <h1>{% if mode == "login" %}Welcome back.<br /><em>Keep moving.</em>{% else %}Start with a<br /><em>clear direction.</em>{% endif %}</h1>
+      <p>
+        {% if mode == "login" %}
+        Pick up where you left off and see the next step in your learning path.
+        {% else %}
+        Tell us what you want to build. SkillOrbit will help you find the next useful step.
+        {% endif %}
+      </p>
+    </section>
+
+    <section class="auth-card" aria-labelledby="auth-title">
+      <div class="auth-card-heading">
+        <p class="eyebrow">{% if mode == "login" %}Sign in{% else %}Create account{% endif %}</p>
+        <h2 id="auth-title">{% if mode == "login" %}Good to see you.{% else %}Let’s get started.{% endif %}</h2>
+      </div>
+
+      {% if error %}
+      <div class="form-message form-error" role="alert">{{ error }}</div>
+      {% endif %}
+      {% if notice %}
+      <div class="form-message form-notice" role="status">{{ notice }}</div>
+      {% endif %}
+      {% if not supabase_configured %}
+      <div class="form-message form-warning" role="status">
+        Authentication is ready in the app, but Supabase is not connected yet. Add the values from <code>.env.example</code> before submitting.
+      </div>
+      {% endif %}
+
+      <form method="post" action="{% if mode == 'login' %}/auth/login{% else %}/auth/signup{% endif %}" class="auth-form">
+        <label>
+          Email address
+          <input type="email" name="email" autocomplete="email" placeholder="you@example.com" required />
+        </label>
+        <label>
+          Password
+          <input type="password" name="password" autocomplete="{% if mode == 'login' %}current-password{% else %}new-password{% endif %}" placeholder="At least 8 characters" minlength="8" required />
+        </label>
+        <button class="button button-primary button-full" type="submit">
+          {% if mode == "login" %}Sign in{% else %}Create my account{% endif %} <span aria-hidden="true">→</span>
+        </button>
+      </form>
+
+      <p class="auth-switch">
+        {% if mode == "login" %}
+        New to SkillOrbit? <a href="/signup">Create an account</a>
+        {% else %}
+        Already have an account? <a href="/login">Sign in</a>
+        {% endif %}
+      </p>
+    </section>
+  </main>
+</div>
+{% endblock %}

@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block body_class %}page-trace{% endblock %}
+
+{% block content %}
+<div class="site-shell app-layout app-layout-sidebar">
+  {% set active = 'trace' %}
+  {% include "partials/app-nav.html" %}
+
+  <div class="app-main">
+    <main class="page-main container">
+      <header class="page-header">
+        <p class="eyebrow"><span class="eyebrow-dot"></span> Observability</p>
+        <h1>Recommendation <em>trace</em></h1>
+        <p class="page-lede">
+          LangGraph-orchestrated pipeline stages, Qdrant retrieval scores, and Mesh narrative generation—visible for judges.
+        </p>
+        <a class="text-link" href="{{ mesh_dashboard_url }}" target="_blank" rel="noreferrer">Open Mesh API dashboard ↗</a>
+      </header>
+
+      {% if error %}
+      <div class="form-message form-warning">{{ error }}</div>
+      {% elif recommendation %}
+      <section class="trace-summary-card">
+        <div class="trace-meta-row">
+          <span class="chip chip-active">Active recommendation</span>
+          {% if recommendation.trace_id %}
+          <code class="trace-id">trace {{ recommendation.trace_id }}</code>
+          {% endif %}
+        </div>
+        <p class="rec-summary dark">{{ recommendation.summary }}</p>
+        <p class="meta-line">Model {{ recommendation.model }} · {{ recommendation.trigger_event_count }} signals at generation</p>
+      </section>
+
+      <section class="trace-stages">
+        <h2>Pipeline stages</h2>
+        <ol class="trace-stage-list">
+          {% for stage in recommendation.graph_stages or [] %}
+          <li class="trace-stage">
+            <span class="trace-stage-name">{{ stage.name }}</span>
+            <span class="trace-stage-status">{{ stage.status }}</span>
+            <ul class="trace-stage-meta">
+              {% for key, value in stage.items() %}
+              {% if key not in ['name', 'status'] %}
+              <li><strong>{{ key }}</strong> {{ value }}</li>
+              {% endif %}
+              {% endfor %}
+            </ul>
+          </li>
+          {% endfor %}
+        </ol>
+      </section>
+
+      {% if recommendation.retrieval_metadata %}
+      <section class="trace-retrieval">
+        <h2>Retrieval evidence</h2>
+        <div class="sync-summary-grid">
+          <div class="sync-stat"><strong>{{ recommendation.retrieval_metadata.get('catalog_match_count', 0) }}</strong><span>Catalog matches</span></div>
+          <div class="sync-stat"><strong>{{ recommendation.retrieval_metadata.get('top_score', 0) }}</strong><span>Top score</span></div>
+          <div class="sync-stat"><strong>{{ recommendation.retrieval_metadata.get('mean_score', 0) }}</strong><span>Mean score</span></div>
+          <div class="sync-stat"><strong>{{ recommendation.retrieval_metadata.get('candidate_count', 0) }}</strong><span>Vector hits</span></div>
+        </div>
+        {% if recommendation.retrieval_query %}
+        <div class="aside-block">
+          <p class="aside-label">Retrieval query</p>
+          <pre class="trace-query">{{ recommendation.retrieval_query }}</pre>
+        </div>
+        {% endif %}
+      </section>
+      {% endif %}
+
+      {% if recommendation.items %}
+      <section class="trace-items">
+        <h2>Grounded items</h2>
+        <ol class="rec-items rec-items-dark">
+          {% for item in recommendation['items'] %}
+          <li>
+            <span class="rec-rank">{{ item.rank }}</span>
+            <span class="rec-body">
+              <strong>{{ item.title }}</strong>
+              <small>score {{ item.retrieval_score or '—' }}</small>
+              <em>{{ item.reason }}</em>
+            </span>
+          </li>
+          {% endfor %}
+        </ol>
+      </section>
+      {% endif %}
+      {% else %}
+      <div class="empty-state">
+        <span class="empty-mark">◎</span>
+        <h2>No trace yet</h2>
+        <p>Generate a recommendation from the dashboard to inspect the full agent pipeline.</p>
+        <a class="button button-primary" href="/dashboard">Go to dashboard →</a>
+      </div>
+      {% endif %}
+
+      {% if recommendation_history %}
+      <section class="history-full">
+        <h2>Recent traces</h2>
+        {% for item in recommendation_history %}
+        <article class="history-full-row">
+          <time>{{ item.created_at[:16]|replace("T", " ") }}</time>
+          <div>
+            <strong>{{ item.summary }}</strong>
+            <small>{{ item.trigger_event_count }} signals · trace {{ (item.trace_id or '—')[:12] }}</small>
+          </div>
+        </article>
+        {% endfor %}
+      </section>
+      {% endif %}
+    </main>
+  </div>
+</div>
+{% endblock %}

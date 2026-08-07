@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+jinja2
+python-dotenv
+httpx
+python-multipart
+openai
+qdrant-client
+apscheduler
+langgraph
+langchain-core

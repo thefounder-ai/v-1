@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="site-shell app-layout app-layout-sidebar">
+  {% set active = 'admin' %}
+  {% include "partials/app-nav.html" %}
+
+  <div class="app-main">
+  <main class="admin-main container">
+    <div class="admin-heading">
+      <div><p class="eyebrow"><span class="eyebrow-dot"></span> Admin catalog</p><h1>Shape the library<br /><em>with intention.</em></h1><p>Add resources that give learners a useful next step. Every item has a clear source, context, and place in the catalog.</p></div>
+        <a class="button button-quiet" href="/admin/sync-health">Sync health ↗</a>
+        <a class="button button-primary" href="/admin/products/new">Add resource +</a>
+    </div>
+    {% if message %}<div class="catalog-message form-notice" role="status">{{ message }}</div>{% endif %}
+    {% if error %}<div class="catalog-message form-error" role="alert">{{ error }}</div>{% endif %}
+    <div class="admin-toolbar">
+      <span>{{ products|length }} total resources</span>
+      <div class="admin-toolbar-actions">
+        <span class="sync-legend"><i class="sync-dot sync-pending"></i> Pending: {{ products|selectattr("vector_sync_status", "ne", "synced")|list|length }}</span>
+        <form method="post" action="/admin/products/index"><button class="button button-small button-quiet" type="submit">Index pending resources ↗</button></form>
+      </div>
+    </div>
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Resource</th><th>Type</th><th>Level</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          {% for product in products %}
+          <tr>
+            <td><div class="admin-resource-name"><strong>{{ product.title }}</strong><small>{{ product.category }} · {{ product.provider }}</small></div></td>
+            <td>{{ product.content_type|replace("_", " ") }}</td>
+            <td>{{ product.difficulty }}</td>
+            <td><span class="admin-status {% if product.is_active %}is-active{% else %}is-inactive{% endif %}">{{ "Active" if product.is_active else "Inactive" }}</span><small class="vector-status vector-{{ product.vector_sync_status|default('pending') }}">{{ product.vector_sync_status|default('pending') }}</small></td>
+            <td class="admin-actions">
+              <a href="/admin/products/{{ product.id }}/edit">Edit</a>
+              {% if product.is_active %}
+              <form method="post" action="/admin/products/{{ product.id }}/deactivate"><button type="submit">Deactivate</button></form>
+              {% else %}
+              <form method="post" action="/admin/products/{{ product.id }}/reactivate"><button type="submit">Reactivate</button></form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </main>
+  </div>
+</div>
+{% endblock %}

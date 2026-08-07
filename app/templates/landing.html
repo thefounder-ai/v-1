@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block body_class %}page-landing{% endblock %}
+
+{% block content %}
+<div class="site-shell landing-v3">
+  <div class="landing-bg" aria-hidden="true"></div>
+  <header class="site-header container">
+    <a class="brand" href="/" aria-label="SkillOrbit home">
+      <span class="brand-mark" aria-hidden="true">S</span>
+      <span>SkillOrbit</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary navigation">
+      <a href="#how-it-works">How it works</a>
+      <a href="#paths">Paths</a>
+      <a href="/explore">Catalog</a>
+      <a href="https://developers.meshapi.ai" target="_blank" rel="noreferrer">Mesh API</a>
+      {% if user %}
+      <a class="button button-small button-quiet" href="/dashboard">Dashboard ↗</a>
+      {% else %}
+      <a href="/login">Sign in</a>
+      <a class="button button-small button-primary" href="/signup">Get started →</a>
+      {% endif %}
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero-v3 container">
+      <div class="hero-v3-copy">
+        <p class="eyebrow"><span class="eyebrow-dot"></span> AI career learning navigator</p>
+        <h1>Your learning activity, turned into <em>one clear next step.</em></h1>
+        <p class="hero-lede">
+          SkillOrbit watches what you explore, retrieves real resources from a live catalog,
+          and explains why each recommendation fits—backed by behavioral evidence you can see.
+        </p>
+        <div class="hero-actions">
+          <a class="button button-primary button-lg" href="{% if user %}/dashboard{% else %}/signup{% endif %}">
+            {% if user %}Open dashboard{% else %}Start free{% endif %} →
+          </a>
+          <a class="button button-quiet button-lg" href="/explore">Browse catalog</a>
+        </div>
+        <ul class="hero-stats">
+          <li><strong>80+</strong><span>Curated resources</span></li>
+          <li><strong>5</strong><span>Career paths</span></li>
+          <li><strong>100%</strong><span>Grounded retrieval</span></li>
+        </ul>
+      </div>
+      <div class="hero-v3-visual">
+        <div class="orbit-card orbit-card-lg glass-card">
+          <div class="card-topline">
+            <span class="status-label"><span class="status-dot"></span> Live demo flow</span>
+            <span class="muted-label">Signals → Qdrant → Mesh</span>
+          </div>
+          <div class="demo-flow">
+            <div class="demo-step is-done"><span>1</span><div><strong>Browse RAG resources</strong><small>Semantic search + dwell time</small></div></div>
+            <div class="demo-step is-done"><span>2</span><div><strong>Profile updates</strong><small>Categories, skills, searches weighted</small></div></div>
+            <div class="demo-step is-active"><span>3</span><div><strong>Recommendation shifts</strong><small>Production RAG path retrieved</small></div></div>
+          </div>
+          <div class="recommendation-preview">
+            <div class="rec-label">Grounded output</div>
+            <div class="rec-content">
+              <div>
+                <h3>Build Production RAG Systems</h3>
+                <p>Real catalog ID · validated before display</p>
+              </div>
+              <span class="arrow-circle">→</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="signal-strip">
+      <div class="container signal-strip-inner">
+        <span>Supabase Auth & catalog</span>
+        <span class="strip-line"></span>
+        <span>Qdrant semantic retrieval</span>
+        <span class="strip-line"></span>
+        <span>Mesh API narratives</span>
+        <span class="strip-line"></span>
+        <span>Non-blocking event tracking</span>
+      </div>
+    </section>
+
+    <section class="section container" id="how-it-works">
+      <div class="section-intro centered">
+        <p class="eyebrow">How it works</p>
+        <h2>Real signals. Real catalog. Real explanations.</h2>
+        <p>No hardcoded demo switches—every recommendation is retrieved, validated, and stored with trace metadata.</p>
+      </div>
+      <div class="feature-grid feature-grid-v3">
+        <article class="feature-card">
+          <span class="feature-number">01</span>
+          <h3>Explore naturally</h3>
+          <p>Search semantically, filter by goal, and open resources. Events batch silently via sendBeacon.</p>
+        </article>
+        <article class="feature-card featured">
+          <span class="feature-number">02</span>
+          <h3>Build your signal profile</h3>
+          <p>Dwell time, searches, bookmarks, and categories combine into a deterministic interest snapshot.</p>
+        </article>
+        <article class="feature-card">
+          <span class="feature-number">03</span>
+          <h3>Get a grounded path</h3>
+          <p>Qdrant retrieves candidates; Mesh writes reasons only from those catalog items—never invented IDs.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section container product-shot" id="product">
+      <div class="section-intro centered">
+        <p class="eyebrow">Product preview</p>
+        <h2>Dashboard built for <em>explainable</em> recommendations</h2>
+        <p>Interest radar, activity timeline, recommendation diff, and Mesh trace IDs—everything judges need in one view.</p>
+      </div>
+      <div class="orbit-card orbit-card-lg glass-card" style="max-width: 720px; margin: 0 auto;">
+        <div class="dash-stat-row" style="margin-bottom: 16px;">
+          <div class="stat-pill"><strong>12</strong><span>Signals</span></div>
+          <div class="stat-pill"><strong>40%</strong><span>Path</span></div>
+          <div class="stat-pill"><strong>3</strong><span>Streak</span></div>
+        </div>
+        <div class="recommendation-preview">
+          <div class="rec-label">Next best step</div>
+          <div class="rec-content">
+            <div>
+              <h3>Production RAG Systems</h3>
+              <p>Grounded catalog · trace abc123 · Qdrant top score 0.82</p>
+            </div>
+            <span class="arrow-circle">→</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section container" id="agent-story">
+      <div class="section-intro centered">
+        <p class="eyebrow">Agent story</p>
+        <h2>Watch behavior <em>change</em> the path</h2>
+        <p>Search RAG → dwell on resources → refresh profile → recommendation diff shows before vs after.</p>
+      </div>
+      <div class="feature-grid feature-grid-v3">
+        <article class="feature-card"><span class="feature-number">A</span><h3>Browse & search</h3><p>Semantic Qdrant retrieval on a live 80-resource catalog.</p></article>
+        <article class="feature-card featured"><span class="feature-number">B</span><h3>Signals accumulate</h3><p>Batched events update category and skill weights in real time.</p></article>
+        <article class="feature-card"><span class="feature-number">C</span><h3>LangGraph pipeline</h3><p>analyze → retrieve → evaluate → Mesh generate → validate → persist.</p></article>
+      </div>
+    </section>
+
+    <section class="section container" id="pricing">
+      <div class="section-intro centered">
+        <p class="eyebrow">Honest tiers</p>
+        <h2>Built like SaaS, <em>not</em> fake checkout</h2>
+        <p>No stub cart—bookmarks, progress, and digests are real product features.</p>
+      </div>
+      <div class="pricing-grid">
+        <article class="pricing-card">
+          <h3>Explorer</h3>
+          <p class="meta-line">Free · public catalog</p>
+          <ul><li>Browse & semantic search</li><li>80+ attributed resources</li><li>No account required</li></ul>
+        </article>
+        <article class="pricing-card featured">
+          <h3>Learner</h3>
+          <p class="meta-line">Free · account</p>
+          <ul><li>Grounded recommendations</li><li>Progress + streak tracking</li><li>Weekly digest emails</li></ul>
+        </article>
+        <article class="pricing-card">
+          <h3>Builder</h3>
+          <p class="meta-line">For hackathon judges</p>
+          <ul><li>Trace + Mesh observability</li><li>Admin dual-write to Qdrant</li><li>LangGraph agent story</li></ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="paths-section" id="paths">
+      <div class="container paths-layout">
+        <div class="section-intro">
+          <p class="eyebrow">Career directions</p>
+          <h2>Five learning orbits.<br /><em>One path that fits you.</em></h2>
+        </div>
+        <div class="path-list">
+          <a class="path-row" href="{% if user %}/learning-path{% else %}/signup{% endif %}"><span>01</span><strong>AI Engineer</strong><b>→</b></a>
+          <a class="path-row" href="{% if user %}/learning-path{% else %}/signup{% endif %}"><span>02</span><strong>Backend Developer</strong><b>→</b></a>
+          <a class="path-row" href="{% if user %}/learning-path{% else %}/signup{% endif %}"><span>03</span><strong>Generative AI Builder</strong><b>→</b></a>
+          <a class="path-row" href="{% if user %}/learning-path{% else %}/signup{% endif %}"><span>04</span><strong>Data/ML Foundations</strong><b>→</b></a>
+          <a class="path-row" href="{% if user %}/learning-path{% else %}/signup{% endif %}"><span>05</span><strong>Production AI Product Builder</strong><b>→</b></a>
+        </div>
+      </div>
+    </section>
+
+    <section class="final-cta container">
+      <div>
+        <p class="eyebrow">Ready when you are</p>
+        <h2>Less noise.<br /><em>More momentum.</em></h2>
+      </div>
+      <a class="button button-primary button-lg" href="{% if user %}/dashboard{% else %}/signup{% endif %}">
+        {% if user %}Continue learning{% else %}Create your account{% endif %} →
+      </a>
+    </section>
+  </main>
+
+  <footer class="site-footer container">
+    <a class="brand" href="/"><span class="brand-mark">S</span><span>SkillOrbit</span></a>
+    <p>Behavioral AI learning navigation for builders.</p>
+    <span class="footer-note">SmartReco Build Challenge 2026</span>
+  </footer>
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: skillorbit
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-5000}
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_NAME
+        value: SkillOrbit
+      - key: MESH_API_BASE_URL
+        value: https://api.meshapi.ai/v1
+      - key: MESH_EMBEDDING_MODEL
+        value: cohere/embed-english-v3
+      - key: MESH_CHAT_MODEL
+        value: openai/gpt-4.1-mini
+      - key: QDRANT_COLLECTION
+        value: skillorbit_products
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: MESH_API_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      - key: APP_PUBLIC_URL
+        sync: false

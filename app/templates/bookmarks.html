@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block body_class %}page-bookmarks{% endblock %}
+
+{% block content %}
+<div class="site-shell app-layout app-layout-sidebar">
+  {% set active = 'bookmarks' %}
+  {% include "partials/app-nav.html" %}
+
+  <div class="app-main">
+  <main class="catalog-main container">
+    <div class="catalog-heading">
+      <div>
+        <p class="eyebrow"><span class="eyebrow-dot"></span> Saved library</p>
+        <h1>Resources you <em>bookmarked</em></h1>
+        <p>Saved items boost your interest profile and stay ready for your next session.</p>
+      </div>
+      <div class="catalog-count"><strong>{{ products|length }}</strong><span>saved<br />resources</span></div>
+    </div>
+
+    {% if error %}
+    <div class="catalog-message form-error" role="alert">{{ error }}</div>
+    {% elif products %}
+    <div class="resource-grid marketplace-grid">
+      {% for product in products %}
+      <article class="resource-card marketplace-card">
+        <div class="marketplace-card-visual" aria-hidden="true">
+          <span class="marketplace-code">{{ product.slug[:3]|upper }}</span>
+          <span class="resource-type">{{ product.content_type|replace("_", " ") }}</span>
+        </div>
+        <div class="resource-card-body">
+          <p class="resource-category">{{ product.category }}</p>
+          <h2><a href="/resource/{{ product.id }}">{{ product.title }}</a></h2>
+          <p>{{ product.short_summary }}</p>
+        </div>
+        <div class="resource-card-bottom">
+          <span>{{ product.price_label }}</span>
+          <a class="button button-small button-primary" href="/resource/{{ product.id }}">Continue →</a>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <span class="empty-mark">★</span>
+      <h2>No bookmarks yet</h2>
+      <p>Save resources while browsing — they appear here instantly.</p>
+      <a class="button button-primary" href="/explore">Explore catalog →</a>
+    </div>
+    {% endif %}
+  </main>
+  </div>
+</div>
+{% endblock %}

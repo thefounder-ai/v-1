@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="simple-state container">
+  <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">S</span><span>SkillOrbit</span></a>
+  <div class="simple-state-card">
+    <p class="eyebrow"><span class="eyebrow-dot"></span> Almost there</p>
+    <h1>The catalog is<br /><em>being connected.</em></h1>
+    <p>{{ message }}</p>
+    <a class="button button-primary" href="/">Back to home <span aria-hidden="true">→</span></a>
+  </div>
+</div>
+{% endblock %}
