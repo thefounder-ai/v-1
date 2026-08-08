@@ -58,6 +58,23 @@ Open **`/demo`** for guided judge mode with auto-run, or follow manually:
 
 Full script: **`/demo`**, `python scripts/demo_seed.py`, and [`DEMO_RUNBOOK.md`](./DEMO_RUNBOOK.md).
 
+## Project structure
+
+```
+app/                  # FastAPI backend, LangGraph agent, Jinja2 templates
+  langgraph_agent.py  # analyze → retrieve → evaluate → generate → persist
+  static/tracking.js  # batched, non-blocking behavioral event capture
+  templates/          # server-rendered UI (dashboard, explore, trace, admin)
+scripts/
+  competition_verify.py   # submission self-check (tests + judge audit)
+  bootstrap_qdrant.py     # dual-write vector index sync
+  demo_seed.py              # judge demo activity seeder
+  local_e2e.py              # authenticated local smoke test
+supabase/migrations/  # schema + catalog seed (001–016)
+tests/                  # unit tests (run via competition_verify)
+.github/workflows/      # SmartReco Checks + quality CI
+```
+
 ## Architecture
 
 ```mermaid
@@ -101,11 +118,9 @@ Structured JSON logs include `recommendation_graph_finished` events with per-sta
 3. Paste the trace ID into the [Mesh dashboard](https://developers.meshapi.ai) to inspect token usage.
 4. Share `/path/{recommendation_id}` for a public, PII-free snapshot; use **Export PDF** for print.
 
-![Mesh trace screenshot placeholder](./docs/assets/mesh-trace-screenshot.png)
-
 ## Current status
 
-- Migrations `001`–`015` (catalog ~80 resources; `015` adds `delivery_kind` for weekly digests)
+- Migrations `001`–`016` (catalog ~80 resources; `015` weekly digest; `016` recommendation change explanations)
 - Public `/explore` and `/resource/{id}`; login for dashboard, bookmarks, recommendations
 - Deploy via [`render.yaml`](./render.yaml) (set `SUPABASE_SERVICE_ROLE_KEY` for digests)
 
@@ -122,7 +137,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 5000
 ## Supabase setup
 
 1. Enable email/password auth.
-2. Run migrations `001` through `015` in order.
+2. Run migrations `001` through `016` in order.
 3. Set `profiles.role = 'admin'` for admin accounts.
 4. Configure Qdrant + Mesh (+ optional Resend) in `.env`.
 5. `python scripts/bootstrap_qdrant.py` after seeding catalog.
