@@ -2,8 +2,9 @@
 {% block body_class %}page-landing{% endblock %}
 
 {% block content %}
-<div class="site-shell landing-v3">
+<div class="site-shell landing-v3 landing-v4">
   <div class="landing-bg" aria-hidden="true"></div>
+
   <header class="site-header container">
     <a class="brand" href="/" aria-label="SkillOrbit home">
       <span class="brand-mark" aria-hidden="true">S</span>
@@ -11,10 +12,10 @@
     </a>
     <nav class="site-nav" aria-label="Primary navigation">
       <a href="#how-it-works">How it works</a>
-      <a href="#paths">Paths</a>
+      <a href="#features">Features</a>
+      <a href="#architecture">Architecture</a>
       <a href="/explore">Catalog</a>
       <a href="/demo">Judge demo</a>
-      <a href="https://developers.meshapi.ai" target="_blank" rel="noreferrer">Mesh API</a>
       {% if user %}
       <a class="button button-small button-quiet" href="/dashboard">Dashboard ↗</a>
       {% else %}
@@ -25,36 +26,37 @@
   </header>
 
   <main>
+    {# ── Hero ── #}
     <section class="hero-v3 container">
       <div class="hero-v3-copy">
-        <p class="eyebrow"><span class="eyebrow-dot"></span> AI career learning navigator</p>
-        <h1>Your learning activity, turned into <em>one clear next step.</em></h1>
+        <p class="eyebrow"><span class="eyebrow-dot"></span> SmartReco Build Challenge 2026</p>
+        <h1>Your browsing behavior, turned into a <em>personalized learning path.</em></h1>
         <p class="hero-lede">
-          SkillOrbit watches what you explore, retrieves real resources from a live catalog,
-          and explains why each recommendation fits—backed by behavioral evidence you can see.
+          SkillOrbit watches how you explore, search, and bookmark real courses — then uses AI to recommend
+          your next step with a convincing story. Every suggestion is grounded in the live catalog, never hallucinated.
         </p>
         <div class="hero-actions">
           <a class="button button-primary button-lg" href="{% if user %}/dashboard{% else %}/signup{% endif %}">
             {% if user %}Open dashboard{% else %}Start free{% endif %} →
           </a>
-          <a class="button button-quiet button-lg" href="/explore">Browse catalog</a>
+          <a class="button button-quiet button-lg" href="/demo">Judge demo →</a>
         </div>
         <ul class="hero-stats">
-          <li><strong>80+</strong><span>Curated resources</span></li>
-          <li><strong>5</strong><span>Career paths</span></li>
+          <li><strong>80+</strong><span>Catalog resources</span></li>
+          <li><strong>7-stage</strong><span>LangGraph agent</span></li>
           <li><strong>100%</strong><span>Grounded retrieval</span></li>
         </ul>
       </div>
       <div class="hero-v3-visual">
         <div class="orbit-card orbit-card-lg glass-card">
           <div class="card-topline">
-            <span class="status-label"><span class="status-dot"></span> Live demo flow</span>
-            <span class="muted-label">Signals → Qdrant → Mesh</span>
+            <span class="status-label"><span class="status-dot"></span> Live pipeline</span>
+            <span class="muted-label">Behavior → Qdrant → Mesh</span>
           </div>
           <div class="demo-flow">
-            <div class="demo-step is-done"><span>1</span><div><strong>Browse RAG resources</strong><small>Semantic search + dwell time</small></div></div>
-            <div class="demo-step is-done"><span>2</span><div><strong>Profile updates</strong><small>Categories, skills, searches weighted</small></div></div>
-            <div class="demo-step is-active"><span>3</span><div><strong>Recommendation shifts</strong><small>Production RAG path retrieved</small></div></div>
+            <div class="demo-step is-done"><span>1</span><div><strong>Browse &amp; search</strong><small>Events batched silently in background</small></div></div>
+            <div class="demo-step is-done"><span>2</span><div><strong>Interest profile builds</strong><small>Categories, dwell time, bookmarks weighted</small></div></div>
+            <div class="demo-step is-active"><span>3</span><div><strong>AI path generated</strong><small>Qdrant retrieves · Mesh writes narrative</small></div></div>
           </div>
           <div class="recommendation-preview">
             <div class="rec-label">Grounded output</div>
@@ -70,48 +72,286 @@
       </div>
     </section>
 
-    <section class="signal-strip">
-      <div class="container signal-strip-inner">
-        <span>Supabase Auth & catalog</span>
-        <span class="strip-line"></span>
-        <span>Qdrant semantic retrieval</span>
-        <span class="strip-line"></span>
-        <span>Mesh API narratives</span>
-        <span class="strip-line"></span>
-        <span>Non-blocking event tracking</span>
+    {# ── Judge banner ── #}
+    <section class="lp-judge-banner">
+      <div class="container lp-judge-inner">
+        <div>
+          <p class="eyebrow"><span class="eyebrow-dot"></span> For judges</p>
+          <h2>60-second guided demo — no setup required</h2>
+          <p>Open <code>/demo</code>, click <strong>Auto-run demo</strong>, and watch the full story: browse → profile → generate path → trace → share.</p>
+        </div>
+        <a class="button button-primary button-lg" href="/demo">Open judge demo →</a>
       </div>
     </section>
 
+    {# ── How it works — simple 5-step flow ── #}
     <section class="section container" id="how-it-works">
       <div class="section-intro centered">
         <p class="eyebrow">How it works</p>
-        <h2>Real signals. Real catalog. Real explanations.</h2>
-        <p>No hardcoded demo switches—every recommendation is retrieved, validated, and stored with trace metadata.</p>
+        <h2>Five simple steps from <em>browsing</em> to your next course</h2>
+        <p>No magic black box — every step is visible, traceable, and backed by real data.</p>
       </div>
-      <div class="feature-grid feature-grid-v3">
-        <article class="feature-card">
-          <span class="feature-number">01</span>
-          <h3>Explore naturally</h3>
-          <p>Search semantically, filter by goal, and open resources. Events batch silently via sendBeacon.</p>
-        </article>
-        <article class="feature-card featured">
-          <span class="feature-number">02</span>
-          <h3>Build your signal profile</h3>
-          <p>Dwell time, searches, bookmarks, and categories combine into a deterministic interest snapshot.</p>
-        </article>
-        <article class="feature-card">
-          <span class="feature-number">03</span>
-          <h3>Get a grounded path</h3>
-          <p>Qdrant retrieves candidates; Mesh writes reasons only from those catalog items—never invented IDs.</p>
-        </article>
+
+      <div class="lp-flow-steps" aria-label="How SkillOrbit works">
+        <div class="lp-flow-step">
+          <div class="lp-flow-icon">🔍</div>
+          <span class="lp-flow-num">01</span>
+          <h3>Explore the catalog</h3>
+          <p>Search semantically, filter by career goal, open resources. Works without an account.</p>
+        </div>
+        <div class="lp-flow-arrow" aria-hidden="true">→</div>
+        <div class="lp-flow-step">
+          <div class="lp-flow-icon">📡</div>
+          <span class="lp-flow-num">02</span>
+          <h3>We watch quietly</h3>
+          <p>Clicks, searches, dwell time, and bookmarks are batched and sent — never slowing you down.</p>
+        </div>
+        <div class="lp-flow-arrow" aria-hidden="true">→</div>
+        <div class="lp-flow-step lp-flow-step-featured">
+          <div class="lp-flow-icon">🧠</div>
+          <span class="lp-flow-num">03</span>
+          <h3>Profile takes shape</h3>
+          <p>Your interest radar updates — category weights shift as your behavior changes.</p>
+        </div>
+        <div class="lp-flow-arrow" aria-hidden="true">→</div>
+        <div class="lp-flow-step">
+          <div class="lp-flow-icon">⚡</div>
+          <span class="lp-flow-num">04</span>
+          <h3>AI finds matches</h3>
+          <p>Qdrant retrieves real catalog items. Mesh writes a personalized narrative from those results only.</p>
+        </div>
+        <div class="lp-flow-arrow" aria-hidden="true">→</div>
+        <div class="lp-flow-step">
+          <div class="lp-flow-icon">🎯</div>
+          <span class="lp-flow-num">05</span>
+          <h3>Get your path</h3>
+          <p>A clear next step, shareable link, full trace at <code>/trace</code>, and optional email delivery.</p>
+        </div>
+      </div>
+
+      {# Visual system diagram #}
+      <div class="lp-system-diagram" aria-label="System data flow">
+        <div class="lp-diagram-row">
+          <div class="lp-diagram-node lp-diagram-node-user">
+            <strong>Browser</strong>
+            <small>tracking.js batches events</small>
+          </div>
+          <div class="lp-diagram-connector"></div>
+          <div class="lp-diagram-node">
+            <strong>Supabase</strong>
+            <small>events + profiles + paths</small>
+          </div>
+          <div class="lp-diagram-connector"></div>
+          <div class="lp-diagram-node lp-diagram-node-highlight">
+            <strong>Interest profile</strong>
+            <small>category weights + triggers</small>
+          </div>
+          <div class="lp-diagram-connector"></div>
+          <div class="lp-diagram-node lp-diagram-node-agent">
+            <strong>LangGraph agent</strong>
+            <small>7-stage pipeline</small>
+          </div>
+        </div>
+        <div class="lp-diagram-row lp-diagram-row-sub">
+          <div class="lp-diagram-node lp-diagram-node-vector">
+            <strong>Qdrant</strong>
+            <small>semantic retrieval</small>
+          </div>
+          <div class="lp-diagram-connector lp-diagram-connector-dashed"></div>
+          <div class="lp-diagram-node lp-diagram-node-mesh">
+            <strong>Mesh API</strong>
+            <small>LLM + embeddings</small>
+          </div>
+          <div class="lp-diagram-connector lp-diagram-connector-dashed"></div>
+          <div class="lp-diagram-node">
+            <strong>Dashboard</strong>
+            <small>path + trace + share</small>
+          </div>
+          <div class="lp-diagram-connector lp-diagram-connector-dashed"></div>
+          <div class="lp-diagram-node lp-diagram-node-email">
+            <strong>Resend</strong>
+            <small>instant + weekly email</small>
+          </div>
+        </div>
       </div>
     </section>
 
+    {# ── Features ── #}
+    <section class="section lp-features-section" id="features">
+      <div class="container">
+        <div class="section-intro centered">
+          <p class="eyebrow">Features</p>
+          <h2>Everything a real recommendation platform needs</h2>
+          <p>Built for the SmartReco challenge — behavioral tracking, grounded AI, and production-grade design.</p>
+        </div>
+        <div class="lp-features-grid">
+          <article class="lp-feature-tile">
+            <span class="lp-feature-icon">📊</span>
+            <h3>Behavioral tracking</h3>
+            <p>Batched, non-blocking event capture — page views, searches, dwell time, bookmarks. Uses sendBeacon on page hide.</p>
+          </article>
+          <article class="lp-feature-tile">
+            <span class="lp-feature-icon">🔎</span>
+            <h3>Semantic search</h3>
+            <p>Qdrant-powered catalog search on <code>/explore</code>. Find resources by meaning, not just keywords.</p>
+          </article>
+          <article class="lp-feature-tile lp-feature-tile-accent">
+            <span class="lp-feature-icon">🤖</span>
+            <h3>LangGraph agent</h3>
+            <p>7-stage pipeline: analyze → retrieve → evaluate → moderate → generate → validate → persist.</p>
+          </article>
+          <article class="lp-feature-tile">
+            <span class="lp-feature-icon">🛡️</span>
+            <h3>Grounded output</h3>
+            <p>Every product ID validated against SQL before display. LLM writes narrative from retrieved candidates only.</p>
+          </article>
+          <article class="lp-feature-tile">
+            <span class="lp-feature-icon">📈</span>
+            <h3>Interest radar</h3>
+            <p>Live category weights, streak tracking, weekly minutes vs goal — all driven by real activity.</p>
+          </article>
+          <article class="lp-feature-tile">
+            <span class="lp-feature-icon">🔄</span>
+            <h3>Recommendation diff</h3>
+            <p>Change your behavior, refresh your path, and see exactly <em>what changed</em> and why.</p>
+          </article>
+          <article class="lp-feature-tile">
+            <span class="lp-feature-icon">🔗</span>
+            <h3>Shareable paths</h3>
+            <p>Public <code>/path/{id}</code> links and PDF export — no login required to view shared results.</p>
+          </article>
+          <article class="lp-feature-tile">
+            <span class="lp-feature-icon">🔬</span>
+            <h3>Full observability</h3>
+            <p><code>/trace</code> page shows pipeline stages, Qdrant scores, and Mesh trace IDs for every recommendation.</p>
+          </article>
+          <article class="lp-feature-tile">
+            <span class="lp-feature-icon">⚙️</span>
+            <h3>Admin dual-write</h3>
+            <p>Add a resource in admin → automatically indexed in Qdrant. Sync health page detects drift.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    {# ── Architecture ── #}
+    <section class="section container" id="architecture">
+      <div class="section-intro centered">
+        <p class="eyebrow">Architecture</p>
+        <h2>Production stack, <em>not</em> a prototype</h2>
+        <p>Every layer is a real service — no mocks, no hardcoded recommendations.</p>
+      </div>
+      <div class="lp-arch-grid">
+        <div class="lp-arch-card">
+          <span class="lp-arch-label">Backend</span>
+          <strong>FastAPI</strong>
+          <p>Async Python API + Jinja2 server-rendered UI</p>
+        </div>
+        <div class="lp-arch-card">
+          <span class="lp-arch-label">Database</span>
+          <strong>Supabase</strong>
+          <p>PostgreSQL — auth, events, profiles, recommendations</p>
+        </div>
+        <div class="lp-arch-card lp-arch-card-highlight">
+          <span class="lp-arch-label">Vector DB</span>
+          <strong>Qdrant</strong>
+          <p>Semantic search + RAG retrieval for the agent</p>
+        </div>
+        <div class="lp-arch-card lp-arch-card-highlight">
+          <span class="lp-arch-label">LLM gateway</span>
+          <strong>Mesh API</strong>
+          <p>All chat + embeddings — GPT, Claude, Cohere via one key</p>
+        </div>
+        <div class="lp-arch-card">
+          <span class="lp-arch-label">Agent</span>
+          <strong>LangGraph</strong>
+          <p>Explicit multi-stage reasoning workflow</p>
+        </div>
+        <div class="lp-arch-card">
+          <span class="lp-arch-label">Email</span>
+          <strong>Resend</strong>
+          <p>Manual path emails + automated weekly digest</p>
+        </div>
+        <div class="lp-arch-card">
+          <span class="lp-arch-label">Scheduler</span>
+          <strong>APScheduler</strong>
+          <p>Daily digest check at 09:00 IST</p>
+        </div>
+        <div class="lp-arch-card">
+          <span class="lp-arch-label">Deploy</span>
+          <strong>Render</strong>
+          <p>Production hosting with health checks</p>
+        </div>
+      </div>
+
+      {# Agent pipeline visual #}
+      <div class="lp-pipeline">
+        <p class="lp-pipeline-title">LangGraph agent pipeline</p>
+        <div class="lp-pipeline-track">
+          <div class="lp-pipeline-stage"><span>analyze</span><small>Build query from profile</small></div>
+          <div class="lp-pipeline-chevron" aria-hidden="true"></div>
+          <div class="lp-pipeline-stage"><span>retrieve</span><small>Qdrant vector search</small></div>
+          <div class="lp-pipeline-chevron" aria-hidden="true"></div>
+          <div class="lp-pipeline-stage"><span>evaluate</span><small>Score threshold filter</small></div>
+          <div class="lp-pipeline-chevron" aria-hidden="true"></div>
+          <div class="lp-pipeline-stage"><span>moderate</span><small>Safety check</small></div>
+          <div class="lp-pipeline-chevron" aria-hidden="true"></div>
+          <div class="lp-pipeline-stage lp-pipeline-stage-mesh"><span>generate</span><small>Mesh API narrative</small></div>
+          <div class="lp-pipeline-chevron" aria-hidden="true"></div>
+          <div class="lp-pipeline-stage"><span>validate</span><small>Catalog ID check</small></div>
+          <div class="lp-pipeline-chevron" aria-hidden="true"></div>
+          <div class="lp-pipeline-stage lp-pipeline-stage-final"><span>persist</span><small>Store + trace ID</small></div>
+        </div>
+        <p class="lp-pipeline-note">Smart AI triggers: 5-minute cooldown · 24-hour TTL · regenerate only on meaningful behavior change</p>
+      </div>
+    </section>
+
+    {# ── Email bonus features ── #}
+    <section class="section lp-email-section" id="email">
+      <div class="container">
+        <div class="section-intro centered">
+          <p class="eyebrow">Bonus — proactive delivery</p>
+          <h2>Recommendations that <em>come to you</em></h2>
+          <p>Two email flows powered by Resend — instant on demand, and automatic every 7 days.</p>
+        </div>
+        <div class="lp-email-grid">
+          <article class="lp-email-card">
+            <div class="lp-email-badge">Instant</div>
+            <h3>Email me this path</h3>
+            <p>One click on the dashboard sends your current recommendation — summary, next step, and grounded resources — straight to your inbox.</p>
+            <ul class="lp-email-list">
+              <li>Triggered by user on dashboard</li>
+              <li>HTML email via Resend API</li>
+              <li>Logged in <code>email_deliveries</code></li>
+            </ul>
+            <div class="lp-email-flow-mini">
+              <span>Dashboard</span><span class="lp-mini-arrow">→</span><span>Resend</span><span class="lp-mini-arrow">→</span><span>Inbox</span>
+            </div>
+          </article>
+          <article class="lp-email-card lp-email-card-featured">
+            <div class="lp-email-badge">Automatic</div>
+            <h3>Weekly learning digest</h3>
+            <p>Every 7 days after onboarding, SkillOrbit checks if your path is stale. If behavior changed, it auto-generates a fresh recommendation and emails it — even if you never came back.</p>
+            <ul class="lp-email-list">
+              <li>APScheduler daily check at 09:00 IST</li>
+              <li>External cron fallback for Render free tier</li>
+              <li>Auto-generates path if missing or expired</li>
+              <li>Duplicate guard via <code>delivery_kind</code></li>
+            </ul>
+            <div class="lp-email-flow-mini">
+              <span>Scheduler</span><span class="lp-mini-arrow">→</span><span>LangGraph</span><span class="lp-mini-arrow">→</span><span>Resend</span><span class="lp-mini-arrow">→</span><span>Inbox</span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    {# ── Product preview (kept for tests) ── #}
     <section class="section container product-shot" id="product">
       <div class="section-intro centered">
         <p class="eyebrow">Product preview</p>
         <h2>Dashboard built for <em>explainable</em> recommendations</h2>
-        <p>Interest radar, live activity feed, streak tracking, and Mesh trace IDs—everything judges need in one view.</p>
+        <p>Interest radar, live activity feed, streak tracking, and Mesh trace IDs — everything in one view.</p>
       </div>
       <div class="demo-preview-frame" aria-label="Animated dashboard preview">
         <div class="demo-preview-chrome">
@@ -136,52 +376,16 @@
           </div>
         </div>
       </div>
-      <p class="demo-preview-caption">Live product UI — generate paths, share `/path/{id}`, and inspect traces without mock data.</p>
+      <p class="demo-preview-caption">Live product UI — generate paths, share <code>/path/{id}</code>, inspect traces, and export PDF.</p>
     </section>
 
-    <section class="section container" id="agent-story">
-      <div class="section-intro centered">
-        <p class="eyebrow">Agent story</p>
-        <h2>Watch behavior <em>change</em> the path</h2>
-        <p>Search RAG → dwell on resources → refresh profile → recommendation diff shows before vs after.</p>
-      </div>
-      <div class="feature-grid feature-grid-v3">
-        <article class="feature-card"><span class="feature-number">A</span><h3>Browse & search</h3><p>Semantic Qdrant retrieval on a live 80-resource catalog.</p></article>
-        <article class="feature-card featured"><span class="feature-number">B</span><h3>Signals accumulate</h3><p>Batched events update category and skill weights in real time.</p></article>
-        <article class="feature-card"><span class="feature-number">C</span><h3>LangGraph pipeline</h3><p>analyze → retrieve → evaluate → Mesh generate → validate → persist.</p></article>
-      </div>
-    </section>
-
-    <section class="section container" id="pricing">
-      <div class="section-intro centered">
-        <p class="eyebrow">Honest tiers</p>
-        <h2>Built like SaaS, <em>not</em> fake checkout</h2>
-        <p>No stub cart—bookmarks, progress, and digests are real product features.</p>
-      </div>
-      <div class="pricing-grid">
-        <article class="pricing-card">
-          <h3>Explorer</h3>
-          <p class="meta-line">Free · public catalog</p>
-          <ul><li>Browse & semantic search</li><li>80+ attributed resources</li><li>No account required</li></ul>
-        </article>
-        <article class="pricing-card featured">
-          <h3>Learner</h3>
-          <p class="meta-line">Free · account</p>
-          <ul><li>Grounded recommendations</li><li>Progress + streak tracking</li><li>Weekly digest emails</li></ul>
-        </article>
-        <article class="pricing-card">
-          <h3>Builder</h3>
-          <p class="meta-line">For hackathon judges</p>
-          <ul><li>Trace + Mesh observability</li><li>Admin dual-write to Qdrant</li><li>LangGraph agent story</li></ul>
-        </article>
-      </div>
-    </section>
-
+    {# ── Career paths ── #}
     <section class="paths-section" id="paths">
       <div class="container paths-layout">
         <div class="section-intro">
           <p class="eyebrow">Career directions</p>
           <h2>Five learning orbits.<br /><em>One path that fits you.</em></h2>
+          <p class="meta-line light">Pick your goal during onboarding — the agent tailors retrieval and narrative to your direction.</p>
         </div>
         <div class="path-list">
           <a class="path-row" href="{% if user %}/learning-path{% else %}/signup{% endif %}"><span>01</span><strong>AI Engineer</strong><b>→</b></a>
@@ -193,20 +397,51 @@
       </div>
     </section>
 
+    {# ── Judge checklist ── #}
+    <section class="section container lp-judge-section" id="for-judges">
+      <div class="lp-judge-grid">
+        <div class="section-intro">
+          <p class="eyebrow">For judges</p>
+          <h2>What to look for in <em>60 seconds</em></h2>
+          <p>Every SmartReco requirement is implemented and visible — no hidden magic.</p>
+        </div>
+        <ul class="lp-judge-checklist">
+          <li><span class="lp-check">✓</span> Batched behavioral tracking — open DevTools → Network → <code>/api/events</code></li>
+          <li><span class="lp-check">✓</span> Semantic search — <code>/explore</code> → search <em>production RAG</em></li>
+          <li><span class="lp-check">✓</span> LangGraph agent — generate path → open <code>/trace</code></li>
+          <li><span class="lp-check">✓</span> Grounded output — every item has a real catalog ID</li>
+          <li><span class="lp-check">✓</span> Dual-write — admin add resource → appears in search</li>
+          <li><span class="lp-check">✓</span> Mesh API — trace ID in evidence panel → Mesh dashboard</li>
+          <li><span class="lp-check">✓</span> Weekly digest — APScheduler + Resend (see ARCHITECTURE.md)</li>
+          <li><span class="lp-check">✓</span> Guided demo — <a href="/demo">/demo</a> → Auto-run demo</li>
+        </ul>
+      </div>
+    </section>
+
+    {# ── Final CTA ── #}
     <section class="final-cta container">
       <div>
         <p class="eyebrow">Ready when you are</p>
         <h2>Less noise.<br /><em>More momentum.</em></h2>
+        <p class="meta-line">Built for SmartReco 2026 · Powered by Mesh API</p>
       </div>
-      <a class="button button-primary button-lg" href="{% if user %}/dashboard{% else %}/signup{% endif %}">
-        {% if user %}Continue learning{% else %}Create your account{% endif %} →
-      </a>
+      <div class="lp-cta-actions">
+        <a class="button button-primary button-lg" href="{% if user %}/dashboard{% else %}/signup{% endif %}">
+          {% if user %}Continue learning{% else %}Create your account{% endif %} →
+        </a>
+        <a class="button button-quiet button-lg" href="/explore">Browse catalog</a>
+      </div>
     </section>
   </main>
 
   <footer class="site-footer container">
     <a class="brand" href="/"><span class="brand-mark">S</span><span>SkillOrbit</span></a>
-    <p>Behavioral AI learning navigation for builders.</p>
+    <nav class="lp-footer-nav" aria-label="Footer">
+      <a href="/explore">Catalog</a>
+      <a href="/demo">Judge demo</a>
+      <a href="https://github.com/thefounder-ai/v-1" target="_blank" rel="noreferrer">GitHub</a>
+      <a href="https://developers.meshapi.ai" target="_blank" rel="noreferrer">Mesh API</a>
+    </nav>
     <span class="footer-note">SmartReco Build Challenge 2026</span>
   </footer>
 </div>
