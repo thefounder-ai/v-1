@@ -1,5 +1,7 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from contextlib import asynccontextmanager
+import asyncio
+import json
 import logging
 from typing import Any
 from pathlib import Path
@@ -8,11 +10,19 @@ from uuid import UUID, uuid4
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Form, HTTPException, Request, status
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 
-from app.activity import ActivityBatch, ActivityError, recent_events, store_events
+from app.activity import (
+    ActivityBatch,
+    ActivityError,
+    events_since,
+    format_live_event,
+    recent_events,
+    store_events,
+)
+from app.live_signals import signal_bus
 from app.bookmarks import BookmarkError, bookmarked_product_ids
 from app.progress import ProgressError, list_progress, progress_summary, set_progress, learning_streak, weekly_learning_minutes
 from app.auth import (
@@ -32,15 +42,20 @@ from app.auth import (
 )
 from app.interest import (
     InterestProfileError,
+    apply_recommendation_feedback,
     get_interest_profile,
     refresh_interest_profile,
 )
+from app.path_health import build_path_intelligence, recommendation_api_with_intelligence
+from app.demo_service import DEMO_STEPS, apply_demo_seed
 from app.recommendations import (
     RecommendationError,
     generate_recommendation,
+    get_recommendation_for_share,
     latest_recommendation,
     recommendation_api_payload,
     recommendation_history,
+    recommendation_item_categories,
     update_recommendation_status,
 )
 from app.observability import configure_logging, log_event, new_request_id, request_id_context
@@ -390,6 +405,36 @@ async def _products_for_activity(
     return {product["id"]: product for product in products}
 
 
+def _parse_since_timestamp(value: str | None) -> datetime:
+    if not value:
+        return datetime.now(timezone.utc) - timedelta(seconds=3)
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=timezone.utc)
+        return parsed
+    except ValueError:
+        return datetime.now(timezone.utc) - timedelta(hours=1)
+
+
+def _sse_message(event: str, payload: dict[str, Any]) -> str:
+    return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=True)}\n\n"
+
+
+async def _live_event_payloads(
+    access_token: str,
+    events: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    if not events:
+        return []
+    products_by_id = await _products_for_activity(access_token, events)
+    enriched = _activity_labels(events, products_by_id)
+    return [
+        format_live_event(row, resource_title=row.get("resource_title", ""))
+        for row in enriched
+    ]
+
+
 @app.get("/bookmarks", response_class=HTMLResponse, include_in_schema=False)
 async def bookmarks_page(request: Request) -> HTMLResponse:
     user, profile = await current_user_context(request)
@@ -452,6 +497,7 @@ async def dashboard_page(request: Request) -> HTMLResponse:
     recommendation = None
     recommendation_error = None
     recommendation_history_rows = []
+    path_intelligence = None
     progress_rows: list[dict] = []
     progress_stats: dict[str, Any] = {}
     path_product_ids: list[str] = []
@@ -498,6 +544,28 @@ async def dashboard_page(request: Request) -> HTMLResponse:
     except RecommendationError as error:
         if not recommendation_error:
             recommendation_error = str(error)
+    previous_recommendation = (
+        recommendation_history_rows[1] if len(recommendation_history_rows) > 1 else None
+    )
+    try:
+        if recommendation:
+            rec_path_ids = [
+                item["product_id"]
+                for item in recommendation.get("items") or []
+                if item.get("product_id")
+            ]
+            rec_progress = progress_summary(progress_rows, rec_path_ids) if rec_path_ids else progress_stats
+            path_intelligence = await build_path_intelligence(
+                access_token or "",
+                user["id"],
+                profile,
+                recommendation,
+                interest_profile,
+                rec_progress,
+                last_recommendation=previous_recommendation,
+            )
+    except Exception:
+        path_intelligence = None
     return templates.TemplateResponse(
         request=request,
         name="dashboard.html",
@@ -521,7 +589,8 @@ async def dashboard_page(request: Request) -> HTMLResponse:
             "weekly_minutes_logged": weekly_minutes_logged,
             "weekly_minutes_goal": weekly_minutes_goal,
             "mesh_dashboard_url": "https://developers.meshapi.ai",
-            "previous_recommendation": recommendation_history_rows[1] if len(recommendation_history_rows) > 1 else None,
+            "previous_recommendation": previous_recommendation,
+            "path_intelligence": path_intelligence,
         },
     )
 
@@ -573,11 +642,86 @@ async def ingest_activity_events(
     except (InterestProfileError, RecommendationError):
         pass
 
+    await signal_bus.publish(user["id"], {
+        "accepted": accepted,
+        "refresh_recommended": refresh_recommended,
+        "auto_generate_recommended": auto_generate,
+    })
+
     return {
         "accepted": accepted,
         "refresh_recommended": refresh_recommended,
         "auto_generate_recommended": auto_generate,
     }
+
+
+@app.get("/api/events/stream", tags=["activity"])
+async def events_stream(request: Request) -> StreamingResponse:
+    access_token, user = await _require_api_session(request)
+    visit_since = _parse_since_timestamp(request.query_params.get("since"))
+    seen_event_ids: set[str] = set()
+    new_since_visit_announced = False
+
+    async def generator():
+        nonlocal new_since_visit_announced
+        queue = signal_bus.subscribe(user["id"])
+        cursor = datetime.now(timezone.utc) - timedelta(seconds=2)
+        yield _sse_message("connected", {"status": "ok"})
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    payload = await asyncio.wait_for(queue.get(), timeout=2.0)
+                    yield _sse_message("ingest", payload)
+                except asyncio.TimeoutError:
+                    pass
+
+                try:
+                    rows = await events_since(access_token, user["id"], cursor, limit=20)
+                    live_rows = await _live_event_payloads(access_token, rows)
+                    for row in live_rows:
+                        event_id = row.get("event_id")
+                        if not event_id or event_id in seen_event_ids:
+                            continue
+                        seen_event_ids.add(str(event_id))
+                        occurred_at = row.get("occurred_at")
+                        if occurred_at:
+                            parsed = _parse_since_timestamp(str(occurred_at))
+                            if parsed > cursor:
+                                cursor = parsed
+                        yield _sse_message("signal", row)
+
+                    interest = await get_interest_profile(access_token, user["id"])
+                    visit_rows = await events_since(access_token, user["id"], visit_since, limit=50)
+                    new_since_visit = len({
+                        row.get("event_id")
+                        for row in visit_rows
+                        if row.get("event_id")
+                    })
+                    stats = {
+                        "meaningful_event_count": (interest or {}).get("meaningful_event_count", 0),
+                        "refresh_recommended": bool((interest or {}).get("refresh_recommended")),
+                        "new_since_visit": new_since_visit,
+                    }
+                    yield _sse_message("stats", stats)
+                    if not new_since_visit_announced and new_since_visit > 0:
+                        yield _sse_message("visit", {"new_since_visit": new_since_visit})
+                        new_since_visit_announced = True
+                except (ActivityError, InterestProfileError):
+                    yield _sse_message("heartbeat", {"ts": datetime.now(timezone.utc).isoformat()})
+        finally:
+            signal_bus.unsubscribe(user["id"], queue)
+
+    return StreamingResponse(
+        generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @app.post("/api/interest-profile/refresh", tags=["activity"])
@@ -604,11 +748,25 @@ async def generate_recommendation_endpoint(request: Request) -> dict:
     access_token, user = await _require_api_session(request)
     _, profile = await current_user_context(request)
     force = request.query_params.get("force") == "true"
+    last_recommendation = None
     try:
         if not force:
             cached = await latest_recommendation(access_token, user["id"])
             if cached and within_cooldown(cached) and is_recommendation_fresh(cached):
-                return await recommendation_api_payload(cached, cached=True)
+                history_rows = await recommendation_history(access_token, user["id"], limit=2)
+                if len(history_rows) > 1:
+                    last_recommendation = history_rows[1]
+                return await recommendation_api_with_intelligence(
+                    access_token,
+                    user["id"],
+                    profile,
+                    cached,
+                    cached=True,
+                    last_recommendation=last_recommendation,
+                )
+        history_rows = await recommendation_history(access_token, user["id"], limit=1)
+        if history_rows:
+            last_recommendation = history_rows[0]
         recommendation = await generate_recommendation(
             access_token,
             user["id"],
@@ -631,7 +789,14 @@ async def generate_recommendation_endpoint(request: Request) -> dict:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="A grounded recommendation could not be produced.",
         ) from error
-    return await recommendation_api_payload(recommendation, cached=False)
+    return await recommendation_api_with_intelligence(
+        access_token,
+        user["id"],
+        profile,
+        recommendation,
+        cached=False,
+        last_recommendation=last_recommendation,
+    )
 
 
 @app.post("/api/recommendations/{recommendation_id}/feedback", tags=["recommendations"])
@@ -661,7 +826,16 @@ async def recommendation_feedback(
             },
         }]
     })
+    feedback_influence = None
     try:
+        categories = await recommendation_item_categories(access_token, recommendation_id)
+        event.events[0].metadata["categories"] = categories
+        feedback_influence = await apply_recommendation_feedback(
+            access_token,
+            user["id"],
+            categories,
+            feedback,
+        )
         await store_events(access_token, user["id"], event)
         await update_recommendation_status(
             access_token,
@@ -669,12 +843,15 @@ async def recommendation_feedback(
             recommendation_id,
             "dismissed" if feedback == "not_relevant" else "active",
         )
-    except (ActivityError, RecommendationError) as error:
+    except (ActivityError, RecommendationError, InterestProfileError) as error:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Feedback could not be saved right now.",
         ) from error
-    return {"status": "saved"}
+    return {
+        "status": "saved",
+        "feedback_influence": feedback_influence,
+    }
 
 
 @app.post("/api/recommendations/{recommendation_id}/email", tags=["recommendations"])
@@ -841,6 +1018,124 @@ async def recommendations_page(request: Request) -> HTMLResponse:
             "error": error,
             "mesh_dashboard_url": "https://developers.meshapi.ai",
         },
+    )
+
+
+@app.get("/demo", response_class=HTMLResponse, include_in_schema=False)
+async def judge_demo_page(request: Request) -> HTMLResponse:
+    user, profile = await current_user_context(request)
+    is_admin = bool(profile and profile.get("role") == "admin")
+    return templates.TemplateResponse(
+        request=request,
+        name="demo.html",
+        context={
+            "page_title": "Judge demo",
+            "user": user,
+            "profile": profile,
+            "demo_steps": DEMO_STEPS,
+            "is_admin": is_admin,
+            "app_public_url": settings.app_public_url.rstrip("/"),
+            "mesh_dashboard_url": "https://developers.meshapi.ai",
+        },
+    )
+
+
+@app.post("/api/admin/demo-seed", tags=["admin"])
+async def admin_demo_seed_endpoint(request: Request) -> dict[str, Any]:
+    user, profile = await current_user_context(request)
+    if not user or not profile or profile.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required.",
+        )
+    try:
+        return await apply_demo_seed(email=user.get("email"))
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(error),
+        ) from error
+    except RuntimeError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(error),
+        ) from error
+
+
+@app.get("/path/{recommendation_id}", response_class=HTMLResponse, include_in_schema=False)
+async def shareable_path_page(request: Request, recommendation_id: str) -> HTMLResponse:
+    try:
+        UUID(recommendation_id)
+    except ValueError:
+        return templates.TemplateResponse(
+            request=request,
+            name="path-share.html",
+            context={
+                "page_title": "Learning path",
+                "path": None,
+                "error": "That link is not valid.",
+                "mesh_dashboard_url": "https://developers.meshapi.ai",
+                "app_public_url": settings.app_public_url.rstrip("/"),
+            },
+            status_code=status.HTTP_404_NOT_FOUND,
+        )
+    path = None
+    error = None
+    try:
+        path = await get_recommendation_for_share(recommendation_id)
+        if not path:
+            error = "This learning path is no longer available."
+    except RecommendationError as rec_error:
+        error = str(rec_error)
+    return templates.TemplateResponse(
+        request=request,
+        name="path-share.html",
+        context={
+            "page_title": "Shared learning path",
+            "path": path,
+            "error": error,
+            "mesh_dashboard_url": "https://developers.meshapi.ai",
+            "app_public_url": settings.app_public_url.rstrip("/"),
+        },
+        status_code=status.HTTP_404_NOT_FOUND if error and not path else status.HTTP_200_OK,
+    )
+
+
+@app.get("/path/{recommendation_id}/print", response_class=HTMLResponse, include_in_schema=False)
+async def shareable_path_print_page(request: Request, recommendation_id: str) -> HTMLResponse:
+    try:
+        UUID(recommendation_id)
+    except ValueError:
+        return templates.TemplateResponse(
+            request=request,
+            name="path-export.html",
+            context={
+                "page_title": "Learning path export",
+                "path": None,
+                "error": "That link is not valid.",
+                "auto_print": False,
+            },
+            status_code=status.HTTP_404_NOT_FOUND,
+        )
+    path = None
+    error = None
+    try:
+        path = await get_recommendation_for_share(recommendation_id)
+        if not path:
+            error = "This learning path is no longer available."
+    except RecommendationError as rec_error:
+        error = str(rec_error)
+    auto_print = request.query_params.get("print", "1") != "0"
+    return templates.TemplateResponse(
+        request=request,
+        name="path-export.html",
+        context={
+            "page_title": "Learning path export",
+            "path": path,
+            "error": error,
+            "auto_print": auto_print and bool(path),
+        },
+        status_code=status.HTTP_404_NOT_FOUND if error and not path else status.HTTP_200_OK,
     )
 
 

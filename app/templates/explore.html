@@ -13,6 +13,7 @@
         <p class="eyebrow"><span class="eyebrow-dot"></span> Learning marketplace</p>
         <h1>Browse by <em>category.</em></h1>
         <p>Semantic search via Qdrant + Mesh embeddings. Filters use live Supabase metadata.</p>
+        <span class="tech-badge">Semantic search · Qdrant</span>
       </div>
       <div class="catalog-count"><strong>{{ products|length }}</strong><span>resources<br />in view</span></div>
     </div>
@@ -68,7 +69,8 @@
       {% endfor %}
     </div>
     {% else %}
-    <div class="empty-state"><span class="empty-mark">○</span><h2>No matches</h2><p>Try a broader search or clear filters.</p><a class="text-link" href="/explore">Clear filters ↗</a></div>
+    {% from "partials/empty_state.html" import empty_state %}
+    {{ empty_state('search', 'No matches', 'Try a broader search or clear filters.', '/explore', 'Clear filters ↗') }}
     {% endif %}
   </main>
   </div>
@@ -85,6 +87,7 @@
     form.addEventListener("submit", function () {
       form.classList.add("is-submitting");
       ui.setButtonLoading(searchBtn, true, "Searching…");
+      if (ui.toastMessage) ui.showToast(ui.toastMessage("searchStarted"), "info");
     });
   }
 })();

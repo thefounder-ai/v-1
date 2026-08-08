@@ -13,6 +13,7 @@
       <a href="#how-it-works">How it works</a>
       <a href="#paths">Paths</a>
       <a href="/explore">Catalog</a>
+      <a href="/demo">Judge demo</a>
       <a href="https://developers.meshapi.ai" target="_blank" rel="noreferrer">Mesh API</a>
       {% if user %}
       <a class="button button-small button-quiet" href="/dashboard">Dashboard ↗</a>
@@ -110,25 +111,32 @@
       <div class="section-intro centered">
         <p class="eyebrow">Product preview</p>
         <h2>Dashboard built for <em>explainable</em> recommendations</h2>
-        <p>Interest radar, activity timeline, recommendation diff, and Mesh trace IDs—everything judges need in one view.</p>
+        <p>Interest radar, live activity feed, streak tracking, and Mesh trace IDs—everything judges need in one view.</p>
       </div>
-      <div class="orbit-card orbit-card-lg glass-card" style="max-width: 720px; margin: 0 auto;">
-        <div class="dash-stat-row" style="margin-bottom: 16px;">
-          <div class="stat-pill"><strong>12</strong><span>Signals</span></div>
-          <div class="stat-pill"><strong>40%</strong><span>Path</span></div>
-          <div class="stat-pill"><strong>3</strong><span>Streak</span></div>
+      <div class="demo-preview-frame" aria-label="Animated dashboard preview">
+        <div class="demo-preview-chrome">
+          <span></span><span></span><span></span>
+          <em>skillorbit.app/dashboard</em>
         </div>
-        <div class="recommendation-preview">
-          <div class="rec-label">Next best step</div>
-          <div class="rec-content">
-            <div>
-              <h3>Production RAG Systems</h3>
-              <p>Grounded catalog · trace abc123 · Qdrant top score 0.82</p>
-            </div>
-            <span class="arrow-circle">→</span>
+        <div class="demo-preview-body">
+          <div class="demo-preview-stats">
+            <div class="stat-pill stat-pill-featured stat-pill-streak demo-anim-pulse"><strong>3</strong><span>Day streak</span></div>
+            <div class="stat-pill stat-pill-featured stat-pill-weekly"><strong>45/300</strong><span>Weekly minutes</span></div>
+            <div class="stat-pill"><strong>12</strong><span>Signals</span></div>
+          </div>
+          <div class="demo-preview-card demo-anim-slide">
+            <p class="rec-label">Next best step</p>
+            <h3>Build Production RAG Systems</h3>
+            <p>Grounded catalog · trace abc123 · Qdrant top score 0.82</p>
+          </div>
+          <div class="demo-preview-radar demo-anim-fade">
+            <span style="width:78%"></span>
+            <span style="width:52%"></span>
+            <span style="width:34%"></span>
           </div>
         </div>
       </div>
+      <p class="demo-preview-caption">Live product UI — generate paths, share `/path/{id}`, and inspect traces without mock data.</p>
     </section>
 
     <section class="section container" id="agent-story">

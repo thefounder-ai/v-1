@@ -4,15 +4,34 @@ This is the shortest reliable walkthrough for the SmartReco Build Challenge demo
 
 ## Before the demo
 
-1. Confirm the app responds at `/health`.
-2. Confirm Supabase migrations `001` through `014` have been run.
-3. Index catalog vectors: `python scripts/bootstrap_qdrant.py`
-4. Optional: seed demo activity — `set DEMO_USER_EMAIL=...` then `python scripts/demo_seed.py --apply`
-5. Sign in with a demo learner account and complete onboarding (AI Engineer goal).
-6. Open `/explore` in a fresh browser tab (works without login).
+1. Run `python scripts/competition_verify.py` (or `--ci` in GitHub Actions).
+2. Confirm the app responds at `/health`.
+3. Confirm Supabase migrations `001` through `016` have been run.
+4. Index catalog vectors: `python scripts/bootstrap_qdrant.py`
+5. Optional: seed demo activity — Admin → **Seed demo activity**, or `set DEMO_USER_EMAIL=...` then `python scripts/demo_seed.py --apply`
+6. Sign in with a demo learner account and complete onboarding (AI Engineer goal).
+7. Open `/explore` in a fresh browser tab (works without login).
+8. Bookmark **`/demo`** for guided judge mode.
+
+## 60-second script (judges)
+
+1. **`/demo`** → **Auto-run demo** (admin seeds activity automatically) or manual steps.
+2. **`/explore`** → search `production RAG` → show semantic Qdrant hits.
+3. **`/dashboard`** → interest radar + live feed → **Generate path**.
+4. **`/trace`** → copy Mesh trace ID + retrieval candidate table.
+5. **Share path** → open public `/path/{id}` → **Export PDF**.
+
+## Demo video outline (2–3 minutes)
+
+Record in one take using this order for the submission link in README:
+
+1. Landing → `/explore` semantic search (`production RAG`)
+2. Sign in → dashboard stats (streak, weekly minutes) → **Generate path** (or press `G`)
+3. `/trace` — pipeline stages, Qdrant scores, copy Mesh trace ID
+4. Change behavior → **Refresh path** → **What changed** + causality timeline
+5. **Share path** `/path/{id}` + optional admin dual-write (add resource → index)
 
 ## Three-minute story
-
 ### 1. Show intent-aware discovery
 
 Search for:
@@ -42,6 +61,7 @@ Show:
 - the next best step;
 - real catalog titles and difficulty labels;
 - the reason attached to each resource;
+- **Share path** and **Export PDF** (public `/path/{id}`, no PII);
 - Useful / Not relevant feedback;
 - **Email me this path** (Resend);
 - link to **Full trace** on `/trace`.
@@ -50,7 +70,7 @@ Explain that Qdrant retrieves real resources first, then Mesh writes the explana
 only from those grounded candidates. The LangGraph pipeline stages are:
 
 ```text
-analyze → retrieve → evaluate → generate → validate → persist
+analyze → retrieve → evaluate → moderate → generate → validate → persist
 ```
 
 ### 5. Show recommendation diff
@@ -60,7 +80,7 @@ Change behavior (search a different topic, open new resources), refresh path, an
 
 ### 6. Admin dual-write (optional)
 
-Admin → add resource → **Index pending** → appears in explore search within seconds.
+Admin → **Seed demo activity** → add resource → **Index pending** → appears in explore search within seconds.
 
 ### 7. Scheduled weekly digest
 
@@ -82,6 +102,7 @@ Admin → add resource → **Index pending** → appears in explore search withi
   cached grounded result instead of making another Mesh call.
 - If email says it is not configured, the core path still works; connect Resend
   and add `RESEND_API_KEY` plus `RESEND_FROM_EMAIL` before retrying.
+- If share link fails, confirm `SUPABASE_SERVICE_ROLE_KEY` is set on the server.
 
 ## Judge-facing proof points
 
@@ -90,4 +111,5 @@ Admin → add resource → **Index pending** → appears in explore search withi
 - Behavioral events are authenticated, batched, non-blocking, and protected by RLS.
 - Recommendations store trace IDs and retrieval metadata; `/trace` shows the full story.
 - LangGraph orchestrates the agent without hardcoded recommendations.
-- Anonymous users can browse `/explore`; only personalized features require login.
+- Anonymous users can browse `/explore` and shared `/path/{id}` cards; personalized features require login.
+- `/demo` auto-run completes the core story in under three minutes for judges.

@@ -12,7 +12,12 @@
       <div>
         <p class="eyebrow"><span class="eyebrow-dot"></span> Saved library</p>
         <h1>Resources you <em>bookmarked</em></h1>
-        <p>Saved items boost your interest profile and stay ready for your next session.</p>
+        <p>Saved items stay ready for your next session.
+          <span class="tooltip-wrap">
+            <button type="button" class="tooltip-trigger" aria-describedby="bookmark-boost-tip">?</button>
+            <span class="tooltip-bubble" id="bookmark-boost-tip" role="tooltip">Boosts your interest profile — bookmarks weigh heavily in category signals.</span>
+          </span>
+        </p>
       </div>
       <div class="catalog-count"><strong>{{ products|length }}</strong><span>saved<br />resources</span></div>
     </div>
@@ -22,7 +27,7 @@
     {% elif products %}
     <div class="resource-grid marketplace-grid">
       {% for product in products %}
-      <article class="resource-card marketplace-card">
+      <article class="resource-card marketplace-card" title="Boosts your interest profile when you revisit">
         <div class="marketplace-card-visual" aria-hidden="true">
           <span class="marketplace-code">{{ product.slug[:3]|upper }}</span>
           <span class="resource-type">{{ product.content_type|replace("_", " ") }}</span>
@@ -40,12 +45,8 @@
       {% endfor %}
     </div>
     {% else %}
-    <div class="empty-state">
-      <span class="empty-mark">★</span>
-      <h2>No bookmarks yet</h2>
-      <p>Save resources while browsing — they appear here instantly.</p>
-      <a class="button button-primary" href="/explore">Explore catalog →</a>
-    </div>
+    {% from "partials/empty_state.html" import empty_state %}
+    {{ empty_state('bookmark', 'No bookmarks yet', 'Save resources while browsing — they appear here instantly and boost your interest profile.', '/explore', 'Explore catalog →') }}
     {% endif %}
   </main>
   </div>

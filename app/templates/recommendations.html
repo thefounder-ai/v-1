@@ -49,8 +49,14 @@
     {% endif %}
 
     {% if recommendation and previous_recommendation %}
-    <section class="rec-diff-full">
+    <section class="rec-diff-full" id="change-diff-panel">
       <h2>Before vs after</h2>
+      {% if recommendation.change_explanation %}
+      <div class="change-explanation-box" id="change-explanation-box">
+        <p class="aside-label">Why it changed</p>
+        <p class="change-explanation-text">{{ recommendation.change_explanation }}</p>
+      </div>
+      {% endif %}
       <div class="rec-diff-grid">
         <article class="rec-diff-card">
           <p class="aside-label">Previous path</p>
@@ -65,6 +71,14 @@
           <small>{{ recommendation.created_at[:16]|replace("T", " ") }} · {{ recommendation.trigger_event_count }} signals</small>
         </article>
       </div>
+      {% set timeline = recommendation.retrieval_metadata.get('causality_timeline') if recommendation.retrieval_metadata else [] %}
+      {% if timeline %}
+      <div class="causality-panel" id="causality-panel">
+        <p class="aside-label">Causality timeline</p>
+        {% from "partials/causality_timeline.html" import causality_timeline %}
+        {{ causality_timeline(timeline) }}
+      </div>
+      {% endif %}
     </section>
     {% endif %}
 
@@ -83,12 +97,8 @@
       {% endfor %}
     </section>
     {% elif not recommendation %}
-    <div class="empty-state">
-      <span class="empty-mark">◎</span>
-      <h2>No recommendations yet</h2>
-      <p>Explore the catalog, then generate a path from your dashboard.</p>
-      <a class="button button-primary" href="/dashboard">Go to dashboard →</a>
-    </div>
+    {% from "partials/empty_state.html" import empty_state %}
+    {{ empty_state('recommendation', 'No recommendations yet', 'Explore the catalog, then generate a path from your dashboard.', '/dashboard', 'Go to dashboard →') }}
     {% endif %}
   </main>
   </div>
@@ -116,7 +126,7 @@
         throw new Error((parsed.data && parsed.data.detail) || "Could not refresh path.");
       }
       ui.renderRecommendationsDetail(parsed.data);
-      ui.showToast("Learning path refreshed.", "success");
+      ui.showToast(ui.toastMessage("pathRefreshed"), "success");
     } catch (error) {
       ui.showToast(error.message, "error");
     } finally {

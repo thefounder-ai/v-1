@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block body_class %}page-path-share{% endblock %}
+
+{% block content %}
+<div class="landing-bg" aria-hidden="true"></div>
+<div class="site-shell landing-v3">
+  <header class="landing-nav container">
+    <a class="brand" href="/">SkillOrbit</a>
+    <nav class="landing-links">
+      <a href="{{ app_public_url }}/explore">Explore catalog</a>
+      <a href="{{ app_public_url }}/demo">Judge demo</a>
+    </nav>
+  </header>
+
+  <main class="container path-share-page">
+    <header class="page-header centered">
+      <p class="eyebrow"><span class="eyebrow-dot"></span> Shared learning path</p>
+      <h1>Grounded by <em>Qdrant</em>, explained by <em>Mesh</em></h1>
+      <p class="page-lede">Public read-only snapshot — no personal data included.</p>
+    </header>
+
+    {% if error %}
+    <div class="form-message form-warning">{{ error }}</div>
+    {% elif path %}
+    <article class="path-share-card glass-card">
+      <p class="rec-summary dark">{{ path.summary }}</p>
+      <div class="rec-next-box light">
+        <strong>Do this next</strong>
+        <span>{{ path.next_step }}</span>
+      </div>
+      <ol class="rec-items path-share-items">
+        {% for item in path['items'] %}
+        <li>
+          <span class="rec-rank">{{ item.rank }}</span>
+          <span class="rec-body">
+            <strong>{{ item.title }}</strong>
+            <small>{{ item.category }}{% if item.difficulty %} · {{ item.difficulty }}{% endif %}</small>
+            <em>{{ item.reason }}</em>
+          </span>
+        </li>
+        {% endfor %}
+      </ol>
+      {% if path.retrieval_metadata %}
+      <div class="evidence-box light">
+        <strong>Grounded evidence</strong>
+        <ul>
+          <li>{{ path.trigger_event_count }} behavioral signals at generation</li>
+          <li>{{ path.retrieval_metadata.get('catalog_match_count', 0) }} catalog matches · top score {{ path.retrieval_metadata.get('top_score', 0) }}</li>
+          {% if path.trace_id %}
+          <li>Mesh trace <code>{{ path.trace_id }}</code></li>
+          {% endif %}
+        </ul>
+      </div>
+      {% endif %}
+      <div class="path-share-actions">
+        <a class="button button-primary" href="/path/{{ path.id }}/print" target="_blank" rel="noreferrer">Export PDF ↗</a>
+        <a class="button button-quiet" href="{{ mesh_dashboard_url }}" target="_blank" rel="noreferrer">Mesh dashboard ↗</a>
+      </div>
+      {% if path.created_at %}
+      <p class="meta-line">Generated {{ path.created_at[:16]|replace("T", " ") }} · model {{ path.model }}</p>
+      {% endif %}
+    </article>
+    {% endif %}
+  </main>
+</div>
+{% endblock %}

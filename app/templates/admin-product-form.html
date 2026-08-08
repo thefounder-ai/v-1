@@ -19,9 +19,30 @@
       <label>License / attribution<input name="license_info" value="{{ product.license_info if product else 'Original SkillOrbit content' }}" required /></label>
       <div class="form-row form-row-textarea"><label>Skills <span class="field-note">comma-separated</span><textarea name="skills" rows="2" required>{% if product %}{{ product.skills|join(', ') }}{% endif %}</textarea></label><label>Career goals <span class="field-note">comma-separated</span><textarea name="career_goals" rows="2" required>{% if product %}{{ product.career_goals|join(', ') }}{% endif %}</textarea></label></div>
       <div class="form-row form-row-textarea"><label>Prerequisites <span class="field-note">comma-separated, optional</span><textarea name="prerequisites" rows="2">{% if product %}{{ product.prerequisites|join(', ') }}{% endif %}</textarea></label><label>Learning outcomes <span class="field-note">comma-separated</span><textarea name="learning_outcomes" rows="2" required>{% if product %}{{ product.learning_outcomes|join(', ') }}{% endif %}</textarea></label></div>
-      <div class="admin-form-actions"><a class="button button-quiet" href="/admin/products">Cancel</a><button class="button button-primary" type="submit">{{ "Save changes" if product else "Create resource" }} <span aria-hidden="true">→</span></button></div>
+      <div class="admin-form-actions"><a class="button button-quiet" href="/admin/products">Cancel</a><button class="button button-primary" id="admin-product-submit" type="submit">{{ "Save changes" if product else "Create resource" }} <span aria-hidden="true">→</span></button></div>
     </form>
+    <div id="index-status" class="index-status hidden" aria-live="polite">
+      <div class="index-spinner" aria-hidden="true"></div>
+      <p><strong>Indexing in Qdrant…</strong></p>
+      <small>Dual-write complete. Searchable in catalog explore within ~15–30 seconds.</small>
+    </div>
   </main>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const form = document.querySelector(".admin-resource-form");
+  const status = document.getElementById("index-status");
+  const submit = document.getElementById("admin-product-submit");
+  if (!form || !status || !submit) return;
+  form.addEventListener("submit", function () {
+    status.classList.remove("hidden");
+    submit.disabled = true;
+    submit.textContent = "Saving + indexing…";
+  });
+})();
+</script>
 {% endblock %}

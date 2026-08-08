@@ -3,10 +3,15 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
 from app.observability import elapsed_ms, log_event
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 @dataclass
@@ -25,7 +30,11 @@ class RecommendationGraphState:
 
     def start_stage(self, name: str) -> float:
         started = time.perf_counter()
-        self.stages.append({"name": name, "status": "running"})
+        self.stages.append({
+            "name": name,
+            "status": "running",
+            "started_at": _utc_now_iso(),
+        })
         return started
 
     def finish_stage(
@@ -39,7 +48,11 @@ class RecommendationGraphState:
         stage = next(
             item for item in reversed(self.stages) if item["name"] == name and item["status"] == "running"
         )
-        stage.update({"status": status, "duration_ms": elapsed_ms(started)})
+        stage.update({
+            "status": status,
+            "duration_ms": elapsed_ms(started),
+            "completed_at": _utc_now_iso(),
+        })
         stage.update(metadata)
 
     def fail_stage(self, name: str, started: float, error_code: str) -> None:

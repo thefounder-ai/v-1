@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ page_title }} · SkillOrbit</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <style>
+      body.page-path-export { background: #fff; color: #1a2320; font-family: "DM Sans", sans-serif; margin: 0; padding: 32px; }
+      .export-header { border-bottom: 2px solid #2d5a4b; padding-bottom: 16px; margin-bottom: 24px; }
+      .export-header h1 { font-size: 28px; margin: 0 0 8px; color: #2d5a4b; }
+      .export-meta { font-size: 12px; color: #5c6b66; }
+      .export-summary { font-size: 18px; line-height: 1.5; margin-bottom: 20px; }
+      .export-next { padding: 16px; border: 1px solid #d8e0dc; border-radius: 8px; margin-bottom: 24px; }
+      .export-items { list-style: none; padding: 0; margin: 0; }
+      .export-items li { padding: 12px 0; border-bottom: 1px solid #e8eeeb; }
+      .export-items strong { display: block; }
+      .export-items em { display: block; font-style: normal; color: #5c6b66; font-size: 13px; margin-top: 4px; }
+      .export-trace { margin-top: 24px; font-size: 11px; word-break: break-all; }
+      @media print {
+        body { padding: 0; }
+        .no-print { display: none !important; }
+      }
+    </style>
+  </head>
+  <body class="page-path-export">
+    {% if error %}
+    <p>{{ error }}</p>
+    {% elif path %}
+    <header class="export-header">
+      <h1>SkillOrbit learning path</h1>
+      <p class="export-meta">Grounded retrieval · Mesh narrative · {{ path.created_at[:10] if path.created_at else 'export' }}</p>
+    </header>
+    <p class="export-summary">{{ path.summary }}</p>
+    <div class="export-next">
+      <strong>Do this next</strong>
+      <p>{{ path.next_step }}</p>
+    </div>
+    <ol class="export-items">
+      {% for item in path['items'] %}
+      <li>
+        <strong>{{ item.rank }}. {{ item.title }}</strong>
+        <small>{{ item.category }}{% if item.difficulty %} · {{ item.difficulty }}{% endif %}</small>
+        <em>{{ item.reason }}</em>
+      </li>
+      {% endfor %}
+    </ol>
+    <p class="export-trace">
+      Signals at generation: {{ path.trigger_event_count }}
+      {% if path.retrieval_metadata %} · Matches: {{ path.retrieval_metadata.get('catalog_match_count', 0) }} · Top score: {{ path.retrieval_metadata.get('top_score', 0) }}{% endif %}
+      {% if path.trace_id %}<br />Mesh trace ID: {{ path.trace_id }}{% endif %}
+    </p>
+    <p class="no-print" style="margin-top:32px;">
+      <button type="button" onclick="window.print()">Print / Save as PDF</button>
+    </p>
+    {% if auto_print %}
+    <script>window.addEventListener("load", function () { window.print(); });</script>
+    {% endif %}
+    {% endif %}
+  </body>
+</html>

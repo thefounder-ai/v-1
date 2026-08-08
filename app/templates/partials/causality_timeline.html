@@ -1,0 +1,26 @@
+{% macro causality_timeline(timeline) %}
+{% if timeline %}
+<ol class="causality-timeline">
+  {% for step in timeline %}
+  <li class="causality-step causality-{{ step.kind }}">
+    <span class="causality-icon" aria-hidden="true">
+      {% if step.kind == 'signal' %}◎{% else %}▸{% endif %}
+    </span>
+    <div class="causality-body">
+      <strong>{{ step.label }}</strong>
+      {% if step.detail %}
+      <p>{{ step.detail }}</p>
+      {% endif %}
+      <small>
+        {% if step.kind == 'stage' %}
+          {{ step.status|title }}{% if step.duration_ms %} · {{ step.duration_ms }}ms{% endif %}
+        {% elif step.occurred_at %}
+          {{ step.occurred_at[:16]|replace("T", " ") }}
+        {% endif %}
+      </small>
+    </div>
+  </li>
+  {% endfor %}
+</ol>
+{% endif %}
+{% endmacro %}

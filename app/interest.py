@@ -236,3 +236,83 @@ async def get_interest_profile(
         params={"select": "*", "user_id": f"eq.{user_id}", "limit": "1"},
     )
     return rows[0] if isinstance(rows, list) and rows else None
+
+
+def summarize_feedback_signals(
+    events: list[dict[str, Any]],
+) -> tuple[dict[str, int], dict[str, int]]:
+    """Count useful vs not-relevant feedback per category from stored activity events."""
+    penalties: dict[str, int] = {}
+    boosts: dict[str, int] = {}
+    for event in events:
+        if event.get("event_type") != "recommendation_feedback":
+            continue
+        metadata = event.get("metadata") or {}
+        categories = metadata.get("categories") or []
+        if not categories and metadata.get("category"):
+            categories = [metadata["category"]]
+        feedback = metadata.get("feedback")
+        for category in categories:
+            if not category:
+                continue
+            if feedback == "not_relevant":
+                penalties[category] = penalties.get(category, 0) + 1
+            elif feedback == "useful":
+                boosts[category] = boosts.get(category, 0) + 1
+    return penalties, boosts
+
+
+async def apply_recommendation_feedback(
+    access_token: str,
+    user_id: str,
+    categories: list[str],
+    feedback: str,
+) -> dict[str, Any]:
+    """Adjust stored category weights after learner feedback."""
+    profile = await get_interest_profile(access_token, user_id) or {
+        "user_id": user_id,
+        "interest_snapshot": [],
+        "category_weights": {},
+        "skill_weights": {},
+        "search_terms": [],
+        "signal_summary": "",
+        "event_count": 0,
+        "meaningful_event_count": 0,
+        "refresh_recommended": False,
+        "profile_version": 1,
+    }
+    category_weights = dict(profile.get("category_weights") or {})
+    penalties, boosts = summarize_feedback_signals(await recent_profile_events(access_token, user_id, limit=120))
+    for category in categories:
+        if not category:
+            continue
+        if feedback == "not_relevant":
+            penalties[category] = penalties.get(category, 0) + 1
+            category_weights[category] = max(0.0, round(float(category_weights.get(category, 0)) - 1.0, 2))
+        else:
+            boosts[category] = boosts.get(category, 0) + 1
+            category_weights[category] = round(float(category_weights.get(category, 0)) + 0.5, 2)
+    profile["category_weights"] = category_weights
+    profile["refresh_recommended"] = feedback == "not_relevant" or profile.get("refresh_recommended", False)
+    profile["updated_at"] = datetime.now(timezone.utc).isoformat()
+    profile["user_id"] = user_id
+    profile["profile_version"] = int(profile.get("profile_version", 0)) + 1
+    profile.pop("learner_goal", None)
+    profile.pop("learner_level", None)
+    profile.pop("feedback_penalties", None)
+    profile.pop("feedback_boosts", None)
+    await _request(
+        access_token,
+        "POST",
+        "/rest/v1/user_interest_profiles",
+        params={"on_conflict": "user_id"},
+        json=profile,
+        prefer="resolution=merge-duplicates,return=representation",
+    )
+    return {
+        "categories": categories,
+        "feedback": feedback,
+        "penalties": penalties,
+        "boosts": boosts,
+        "category_weights": category_weights,
+    }

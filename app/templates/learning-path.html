@@ -55,12 +55,8 @@
       {% endfor %}
     </div>
     {% else %}
-    <div class="empty-state">
-      <span class="empty-mark">◎</span>
-      <h2>No path yet</h2>
-      <p>Pick a career goal during onboarding or explore the catalog to build signals.</p>
-      <a class="button button-primary" href="/onboarding">Set your goal →</a>
-    </div>
+    {% from "partials/empty_state.html" import empty_state %}
+    {{ empty_state('path', 'No path yet', 'Pick a career goal during onboarding or explore the catalog to build signals.', '/onboarding', 'Set your goal →') }}
     {% endif %}
 
     {% if career_goals %}

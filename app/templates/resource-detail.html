@@ -29,7 +29,11 @@
           <a class="button button-primary" href="/login">Sign in to add to path</a>
           {% endif %}
           {% if user %}
-          <button class="button button-quiet" type="button" id="bookmark-btn" data-resource-id="{{ product.id }}">★ Save to library</button>
+          <button class="button button-quiet has-tooltip" type="button" id="bookmark-btn" data-resource-id="{{ product.id }}"
+            aria-describedby="bookmark-boost-resource-tip">
+            ★ Save to library
+          </button>
+          <span class="tooltip-bubble tooltip-bubble-button" id="bookmark-boost-resource-tip" role="tooltip">Boosts your interest profile</span>
           <form method="post" action="/api/progress/{{ product.id }}" class="progress-inline-form" id="complete-form">
             <input type="hidden" name="progress_status" value="completed" />
             <button class="button button-quiet" type="submit">Mark complete</button>
@@ -122,7 +126,7 @@
       bookmarkBtn.disabled = true;
       bookmarkBtn.classList.add("is-success");
       appendSignal("Saved", productTitle);
-      if (ui) ui.showToast("Saved to your library.", "success");
+      if (ui) ui.showToast(ui.toastMessage("bookmarkSaved"), "success");
     });
   }
 
@@ -147,7 +151,7 @@
         addBtn.disabled = true;
         addBtn.textContent = "On your path ✓";
         appendSignal("Started", productTitle);
-        ui.showToast("Added to your learning path.", "success");
+        ui.showToast(ui.toastMessage("pathAdded"), "success");
       } catch (error) {
         ui.setButtonLoading(addBtn, false);
         ui.showToast(error.message, "error");
@@ -184,7 +188,7 @@
         button.disabled = true;
         button.textContent = "Completed ✓";
         appendSignal("Completed", productTitle);
-        ui.showToast("Marked as complete.", "success");
+        ui.showToast(ui.toastMessage("progressSaved"), "success");
       } catch (error) {
         ui.setButtonLoading(button, false);
         button.textContent = "Try again";

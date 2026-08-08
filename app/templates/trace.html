@@ -24,11 +24,20 @@
         <div class="trace-meta-row">
           <span class="chip chip-active">Active recommendation</span>
           {% if recommendation.trace_id %}
-          <code class="trace-id">trace {{ recommendation.trace_id }}</code>
+          <code class="trace-id" id="trace-page-trace-id">{{ recommendation.trace_id }}</code>
+          <button type="button" class="button-copy" data-copy-target="trace-page-trace-id">Copy trace ID</button>
           {% endif %}
         </div>
         <p class="rec-summary dark">{{ recommendation.summary }}</p>
         <p class="meta-line">Model {{ recommendation.model }} · {{ recommendation.trigger_event_count }} signals at generation</p>
+        {% set timings = recommendation.retrieval_metadata.get('pipeline_timings') or {} if recommendation.retrieval_metadata else {} %}
+        {% if timings.get('total_ms') %}
+        <div class="pipeline-timing-badge">
+          <span>Retrieve <strong>{{ timings.get('retrieve_ms', 0) }}ms</strong></span>
+          <span>Generate <strong>{{ timings.get('generate_ms', 0) }}ms</strong></span>
+          <span>Total <strong>{{ timings.get('total_ms', 0) }}ms</strong></span>
+        </div>
+        {% endif %}
       </section>
 
       <section class="trace-stages">
@@ -37,10 +46,10 @@
           {% for stage in recommendation.graph_stages or [] %}
           <li class="trace-stage">
             <span class="trace-stage-name">{{ stage.name }}</span>
-            <span class="trace-stage-status">{{ stage.status }}</span>
+            <span class="trace-stage-status">{{ stage.status }}{% if stage.duration_ms %} · {{ stage.duration_ms }}ms{% endif %}</span>
             <ul class="trace-stage-meta">
               {% for key, value in stage.items() %}
-              {% if key not in ['name', 'status'] %}
+              {% if key not in ['name', 'status', 'duration_ms'] %}
               <li><strong>{{ key }}</strong> {{ value }}</li>
               {% endif %}
               {% endfor %}
@@ -57,7 +66,7 @@
           <div class="sync-stat"><strong>{{ recommendation.retrieval_metadata.get('catalog_match_count', 0) }}</strong><span>Catalog matches</span></div>
           <div class="sync-stat"><strong>{{ recommendation.retrieval_metadata.get('top_score', 0) }}</strong><span>Top score</span></div>
           <div class="sync-stat"><strong>{{ recommendation.retrieval_metadata.get('mean_score', 0) }}</strong><span>Mean score</span></div>
-          <div class="sync-stat"><strong>{{ recommendation.retrieval_metadata.get('candidate_count', 0) }}</strong><span>Vector hits</span></div>
+          <div class="sync-stat"><strong>{{ recommendation.retrieval_metadata.get('selected_count', recommendation['items']|length) }}</strong><span>Selected</span></div>
         </div>
         {% if recommendation.retrieval_query %}
         <div class="aside-block">
@@ -65,12 +74,41 @@
           <pre class="trace-query">{{ recommendation.retrieval_query }}</pre>
         </div>
         {% endif %}
+        {% if recommendation.retrieval_metadata.get('candidates') %}
+        <div class="retrieval-candidate-panel">
+          <p class="aside-label">Qdrant candidates (top {{ recommendation.retrieval_metadata.get('candidates')|length }})</p>
+          <div class="retrieval-table-wrap">
+            <table class="retrieval-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Resource</th>
+                  <th>Category</th>
+                  <th>Score</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in recommendation.retrieval_metadata.get('candidates') %}
+                <tr class="{% if row.selected %}is-selected{% else %}is-rejected{% endif %}">
+                  <td>{{ row.rank }}</td>
+                  <td><a href="/resource/{{ row.product_id }}">{{ row.title }}</a></td>
+                  <td>{{ row.category }}{% if row.difficulty %} · {{ row.difficulty }}{% endif %}</td>
+                  <td>{{ row.score }}</td>
+                  <td>{% if row.selected %}<span class="chip chip-active">Selected</span>{% else %}<span class="chip">Rejected</span>{% endif %}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {% endif %}
       </section>
       {% endif %}
 
       {% if recommendation.items %}
       <section class="trace-items">
-        <h2>Grounded items</h2>
+        <h2>Grounded path items</h2>
         <ol class="rec-items rec-items-dark">
           {% for item in recommendation['items'] %}
           <li>
@@ -86,12 +124,8 @@
       </section>
       {% endif %}
       {% else %}
-      <div class="empty-state">
-        <span class="empty-mark">◎</span>
-        <h2>No trace yet</h2>
-        <p>Generate a recommendation from the dashboard to inspect the full agent pipeline.</p>
-        <a class="button button-primary" href="/dashboard">Go to dashboard →</a>
-      </div>
+      {% from "partials/empty_state.html" import empty_state %}
+      {{ empty_state('trace', 'No trace yet', 'Generate a recommendation from the dashboard to inspect the full agent pipeline.', '/dashboard', 'Go to dashboard →') }}
       {% endif %}
 
       {% if recommendation_history %}
@@ -111,4 +145,14 @@
     </main>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  if (window.SkillOrbitUI && window.SkillOrbitUI.bindCopyButtons) {
+    window.SkillOrbitUI.bindCopyButtons(document);
+  }
+})();
+</script>
 {% endblock %}

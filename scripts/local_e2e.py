@@ -242,10 +242,25 @@ async def main() -> None:
 
         # Explore with search
         res = await client.get("/explore", params={"search": "RAG"})
-        if res.status_code == 200 and "course-card" in res.text or "product" in res.text.lower():
+        if res.status_code == 200 and (
+            "marketplace-card" in res.text or "resource-card" in res.text
+        ):
             ok("GET /explore?search=RAG", "semantic search UI")
         else:
             bad("GET /explore?search=RAG", f"status={res.status_code}")
+
+        # Phase 6+ public routes
+        res = await client.get("/demo")
+        if res.status_code == 200 and "Judge mode" in res.text:
+            ok("GET /demo", "judge demo page")
+        else:
+            bad("GET /demo", f"status={res.status_code}")
+
+        res = await client.get("/trace", follow_redirects=False)
+        if res.status_code in (200, 303, 302):
+            ok("GET /trace", "trace page or auth redirect")
+        else:
+            bad("GET /trace", f"status={res.status_code}")
 
     print()
     print("=" * 50)

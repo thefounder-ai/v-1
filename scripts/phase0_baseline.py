@@ -64,14 +64,21 @@ def run_unit_tests() -> None:
 
 
 def check_migrations_on_disk() -> None:
-    if len(MIGRATIONS) >= 15:
+    if len(MIGRATIONS) >= 16:
+        ok("Migration files on disk", f"{len(MIGRATIONS)} files (001–016 present)")
+    elif len(MIGRATIONS) >= 15:
         ok("Migration files on disk", f"{len(MIGRATIONS)} files (001–015 present)")
+        warn("Migration 016 (change_explanation)", "file missing — apply before Phase 2 deploy")
     else:
         bad("Migration files on disk", f"only {len(MIGRATIONS)} found")
     if any(m.name == "015_email_delivery_kind.sql" for m in MIGRATIONS):
         ok("Migration 015 (delivery_kind)", "file present — confirm applied in Supabase SQL editor")
     else:
         bad("Migration 015 (delivery_kind)", "missing file")
+    if any(m.name == "016_recommendation_change_explanation.sql" for m in MIGRATIONS):
+        ok("Migration 016 (change_explanation)", "file present — confirm applied in Supabase SQL editor")
+    else:
+        warn("Migration 016 (change_explanation)", "missing file")
 
 
 def check_local_config() -> None:

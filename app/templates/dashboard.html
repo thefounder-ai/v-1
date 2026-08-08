@@ -18,8 +18,16 @@
         </p>
       </div>
       <div class="dash-stat-row">
+        <div class="stat-pill stat-pill-featured stat-pill-streak">
+          <strong>{{ learning_streak_days }}</strong>
+          <span>Day streak</span>
+        </div>
+        <div class="stat-pill stat-pill-featured stat-pill-weekly">
+          <strong>{% if weekly_minutes_goal %}{{ weekly_minutes_logged }}/{{ weekly_minutes_goal }}{% else %}{{ weekly_minutes_logged }}{% endif %}</strong>
+          <span>Weekly minutes</span>
+        </div>
         <div class="stat-pill">
-          <strong>{% if interest_profile %}{{ interest_profile.meaningful_event_count }}{% else %}0{% endif %}</strong>
+          <strong id="meaningful-signal-count">{% if interest_profile %}{{ interest_profile.meaningful_event_count }}{% else %}0{% endif %}</strong>
           <span>Meaningful signals</span>
         </div>
         <div class="stat-pill">
@@ -29,14 +37,6 @@
         <div class="stat-pill">
           <strong>{% if progress_stats %}{{ progress_stats.completed_count }}{% else %}0{% endif %}</strong>
           <span>Completed</span>
-        </div>
-        <div class="stat-pill">
-          <strong>{{ learning_streak_days }}</strong>
-          <span>Day streak</span>
-        </div>
-        <div class="stat-pill">
-          <strong>{% if weekly_minutes_goal %}{{ weekly_minutes_logged }}/{{ weekly_minutes_goal }}{% else %}{{ weekly_minutes_logged }}{% endif %}</strong>
-          <span>Weekly minutes</span>
         </div>
         <div class="stat-pill">
           <strong>{% if recommendation %}Active{% else %}Pending{% endif %}</strong>
@@ -60,10 +60,12 @@
           </div>
           <button class="button button-small button-light" id="generate-recommendation" type="button"
             data-force="{% if interest_profile and interest_profile.refresh_recommended %}true{% else %}false{% endif %}"
-            data-resend="{{ 'true' if resend_configured else 'false' }}">
+            data-resend="{{ 'true' if resend_configured else 'false' }}"
+            title="Keyboard shortcut: G">
             {% if recommendation %}Refresh path{% else %}Generate path{% endif %}
           </button>
         </div>
+        <p class="keyboard-hint light">Press <kbd>G</kbd> to generate or refresh your path.</p>
         <div id="recommendation-status" class="inline-status light" role="status"></div>
         <div id="recommendation-panel-body">
         {% if recommendation_error %}
@@ -91,7 +93,15 @@
         </ol>
         {% if recommendation.retrieval_metadata %}
         <div class="evidence-box">
-          <strong>Why this changed</strong>
+          <strong>Grounded evidence</strong>
+          {% set timings = recommendation.retrieval_metadata.get('pipeline_timings') or {} %}
+          {% if timings.get('total_ms') %}
+          <div class="pipeline-timing-badge light">
+            <span>Retrieve {{ timings.get('retrieve_ms', 0) }}ms</span>
+            <span>Generate {{ timings.get('generate_ms', 0) }}ms</span>
+            <span>Total {{ timings.get('total_ms', 0) }}ms</span>
+          </div>
+          {% endif %}
           <ul>
             <li>{{ recommendation.trigger_event_count }} behavioral signals at generation time</li>
             {% if recommendation.interest_snapshot %}
@@ -99,12 +109,20 @@
             {% endif %}
             <li>{{ recommendation.retrieval_metadata.get('catalog_match_count', 0) }} catalog matches · top score {{ recommendation.retrieval_metadata.get('top_score', 0) }}</li>
             {% if recommendation.trace_id %}
-            <li>Trace <code>{{ recommendation.trace_id[:12] }}</code> · <a class="text-link light" href="/trace">Full trace ↗</a></li>
+            <li class="trace-copy-row">
+              Trace <code id="dashboard-trace-id">{{ recommendation.trace_id[:12] }}</code>
+              <button type="button" class="button-copy" data-copy-target="dashboard-trace-id" data-copy-full="{{ recommendation.trace_id }}">Copy</button>
+              · <a class="text-link light" href="/trace">Full trace ↗</a>
+            </li>
             {% endif %}
           </ul>
         </div>
         {% endif %}
         <div class="rec-actions">
+          <div class="rec-share-actions">
+            <a class="button button-small button-light" href="/path/{{ recommendation.id }}" target="_blank" rel="noreferrer">Share path</a>
+            <a class="button button-small button-light" href="/path/{{ recommendation.id }}/print" target="_blank" rel="noreferrer">Export PDF</a>
+          </div>
           <div class="recommendation-feedback" data-recommendation-id="{{ recommendation.id }}">
             <span>Was this useful?</span>
             <button type="button" data-feedback="useful">Yes</button>
@@ -117,16 +135,25 @@
           {% endif %}
         </div>
         {% if recommendation.created_at %}
-        <p class="meta-line light">Updated {{ recommendation.created_at[:16]|replace("T", " ") }}{% if recommendation.expires_at %} · expires {{ recommendation.expires_at[:16]|replace("T", " ") }}{% endif %}</p>
+        <p class="meta-line light">Updated {{ recommendation.created_at[:16]|replace("T", " ") }}</p>
+        {% endif %}
+        {% if recommendation.expires_at %}
+        <p class="expiry-countdown light" id="path-expiry-countdown" data-expires-at="{{ recommendation.expires_at }}">
+          Path refreshes in <strong>—</strong>
+        </p>
         {% endif %}
         {% else %}
-        <div class="empty-state-compact">
-          <p>Browse a few resources, then generate a path from your live signals.</p>
-          <a class="button button-light" href="/explore">Explore catalog</a>
-        </div>
+        {% from "partials/empty_state.html" import empty_state %}
+        {{ empty_state('recommendation', 'No path yet', 'Browse a few resources, then generate a path from your live signals.', '/explore', 'Explore catalog →', compact=True) }}
         {% endif %}
         </div>
       </section>
+      <div id="change-insight-dynamic" class="hidden"></div>
+
+      {% from "partials/path_intelligence.html" import path_intelligence_panel %}
+      <div id="path-intelligence-dynamic">
+        {{ path_intelligence_panel(path_intelligence, recommendation) }}
+      </div>
 
       <section class="dash-panel dash-signals-panel">
         <div class="dash-panel-head">
@@ -158,10 +185,8 @@
         <p class="hint-line">Enough new activity to refresh your recommendation.</p>
         {% endif %}
         {% else %}
-        <div class="empty-state-compact">
-          <p>Your interest profile builds as you explore the catalog.</p>
-          <a class="text-link" href="/explore">Start exploring <span>↗</span></a>
-        </div>
+        {% from "partials/empty_state.html" import empty_state %}
+        {{ empty_state('radar', 'Profile building', 'Your interest profile builds as you explore the catalog.', '/explore', 'Start exploring ↗', compact=True) }}
         {% endif %}
       </section>
 
@@ -173,9 +198,9 @@
         {% if activity_error %}
         <div class="form-message form-warning">{{ activity_error }}</div>
         {% elif activity %}
-        <ul class="timeline">
+        <ul class="timeline" id="live-activity-feed">
           {% for event in activity[:10] %}
-          <li>
+          <li{% if event.event_id %} data-event-id="{{ event.event_id }}"{% endif %}>
             <span class="timeline-icon">
               {% if event.event_type == 'resource_view' %}↗
               {% elif event.event_type == 'catalog_search' %}⌕
@@ -197,18 +222,23 @@
           {% endfor %}
         </ul>
         {% else %}
-        <div class="empty-state-compact">
-          <p>Open resources and search topics—events batch silently in the background.</p>
-        </div>
+        {% from "partials/empty_state.html" import empty_state %}
+        {{ empty_state('activity', 'No activity yet', 'Open resources and search topics — events batch silently in the background.', compact=True) }}
         {% endif %}
       </section>
 
       {% if recommendation and previous_recommendation %}
-      <section class="dash-panel dash-diff-panel">
+      <section class="dash-panel dash-diff-panel" id="change-diff-panel">
         <div class="dash-panel-head">
           <h2>What changed</h2>
           <a class="text-link" href="/recommendations">Full diff <span>↗</span></a>
         </div>
+        {% if recommendation.change_explanation %}
+        <div class="change-explanation-box" id="change-explanation-box">
+          <p class="aside-label">Why it changed</p>
+          <p class="change-explanation-text">{{ recommendation.change_explanation }}</p>
+        </div>
+        {% endif %}
         <div class="rec-diff-grid">
           <article>
             <p class="aside-label">Before</p>
@@ -222,6 +252,14 @@
             <small>{{ recommendation.next_step }}</small>
           </article>
         </div>
+        {% set timeline = recommendation.retrieval_metadata.get('causality_timeline') if recommendation.retrieval_metadata else [] %}
+        {% if timeline %}
+        <div class="causality-panel" id="causality-panel">
+          <p class="aside-label">Causality timeline</p>
+          {% from "partials/causality_timeline.html" import causality_timeline %}
+          {{ causality_timeline(timeline) }}
+        </div>
+        {% endif %}
       </section>
       {% endif %}
 
@@ -265,7 +303,7 @@
         const parsed = await ui.parseJsonResponse(res);
         if (!res.ok) throw new Error((parsed.data && parsed.data.detail) || "Refresh failed.");
         profileStatus.textContent = "Signals synced.";
-        ui.showToast("Interest profile updated.", "success");
+        ui.showToast(ui.toastMessage("profileSynced"), "success");
       } catch (error) {
         profileStatus.textContent = error.message;
         ui.showToast(error.message, "error");
@@ -297,7 +335,7 @@
           const parsed = await ui.parseJsonResponse(res);
           if (!res.ok) throw new Error((parsed.data && parsed.data.detail) || "Could not save feedback.");
           feedback.innerHTML = "<span>Thanks — saved.</span>";
-          ui.showToast("Feedback saved.", "success");
+          ui.showToast(ui.toastMessage("feedbackSaved"), "success");
         } catch (error) {
           feedback.innerHTML = "<span>" + error.message + "</span>";
         }
@@ -319,7 +357,7 @@
         const parsed = await ui.parseJsonResponse(res);
         if (!res.ok) throw new Error((parsed.data && parsed.data.detail) || "Email failed.");
         emailBtn.textContent = "Sent ✓";
-        ui.showToast("Path emailed successfully.", "success");
+        ui.showToast(ui.toastMessage("emailSent"), "success");
       } catch (error) {
         ui.setButtonLoading(emailBtn, false);
         ui.showToast(error.message, "error");
@@ -346,10 +384,16 @@
       ui.renderRecommendationPanel(parsed.data, {
         resendConfigured: genBtn.dataset.resend === "true"
       });
+      if (ui.renderChangeInsight) {
+        ui.renderChangeInsight(parsed.data);
+      }
+      if (ui.renderPathIntelligence) {
+        ui.renderPathIntelligence(parsed.data);
+      }
       if (recStatus) {
         recStatus.textContent = parsed.data.cached ? "Showing your latest cached path." : "Your new path is ready.";
       }
-      ui.showToast(parsed.data.cached ? "Loaded cached path." : "Learning path generated.", "success");
+      ui.showToast(parsed.data.cached ? ui.toastMessage("pathCached") : ui.toastMessage("pathGenerated"), "success");
       if (autoBanner) autoBanner.classList.add("hidden");
     } finally {
       stopLoader();
@@ -365,6 +409,15 @@
         ui.showToast(error.message, "error");
       });
     });
+    document.addEventListener("keydown", function (event) {
+      if (!document.body.classList.contains("page-dashboard")) return;
+      if (event.target.closest("input, textarea, select, [contenteditable]")) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.key !== "g" && event.key !== "G") return;
+      if (genBtn.disabled) return;
+      event.preventDefault();
+      genBtn.click();
+    });
   }
 
   if (autoBtn) {
@@ -379,6 +432,11 @@
   window.addEventListener("skillorbit:refresh-recommended", function () {
     if (autoBanner) autoBanner.classList.remove("hidden");
   });
+
+  if (window.SkillOrbitUI && window.SkillOrbitUI.bindCopyButtons) {
+    window.SkillOrbitUI.bindCopyButtons(document);
+  }
 })();
 </script>
+<script src="/static/live.js" defer></script>
 {% endblock %}

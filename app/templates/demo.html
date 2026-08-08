@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block body_class %}page-demo{% endblock %}
+
+{% block content %}
+<div class="landing-bg" aria-hidden="true"></div>
+<div class="site-shell landing-v3">
+  <header class="landing-nav container">
+    <a class="brand" href="/">SkillOrbit</a>
+    <nav class="landing-links">
+      <a href="/explore">Explore</a>
+      {% if user %}
+      <a href="/dashboard">Dashboard</a>
+      {% else %}
+      <a href="/login">Sign in</a>
+      {% endif %}
+    </nav>
+  </header>
+
+  <main class="container demo-page">
+    <header class="demo-hero">
+      <p class="eyebrow"><span class="eyebrow-dot"></span> SmartReco 2026 · Judge mode</p>
+      <h1>Run the full <em>SkillOrbit</em> story in under three minutes.</h1>
+      <p class="page-lede">
+        Guided demo for judges: semantic discovery, live behavioral signals, grounded LangGraph recommendations,
+        and Mesh observability — no mock data.
+      </p>
+      <div class="demo-hero-actions">
+        {% if user %}
+        <button type="button" class="button button-primary" id="demo-auto-run">Auto-run demo</button>
+        {% else %}
+        <a class="button button-primary" href="/login?notice=Sign%20in%20to%20auto-run%20the%20demo.">Sign in to auto-run</a>
+        {% endif %}
+        <a class="button button-quiet" href="/explore?search=production+RAG">Start at explore ↗</a>
+      </div>
+      <p id="demo-run-status" class="inline-status" role="status"></p>
+      <span id="demo-admin-flag" data-admin="{{ 'true' if is_admin else 'false' }}" hidden></span>
+      {% if is_admin %}
+      <p class="meta-line">Admin: seed demo activity from here or <a class="text-link" href="/admin/products">Admin catalog</a>.</p>
+      {% endif %}
+    </header>
+
+    <section class="demo-layout">
+      <div class="demo-flow-panel">
+        <h2>Guided steps</h2>
+        <ol class="demo-flow" id="demo-step-list">
+          {% for step in demo_steps %}
+          <li class="demo-step{% if loop.first %} is-active{% endif %}" data-step="{{ loop.index0 }}" data-href="{{ step.href }}" data-action="{{ step.action or '' }}">
+            <span>{{ loop.index }}</span>
+            <div>
+              <strong>{{ step.title }}</strong>
+              <small>{{ step.detail }}</small>
+              <button type="button" class="text-button demo-step-go">Go →</button>
+            </div>
+          </li>
+          {% endfor %}
+        </ol>
+      </div>
+
+      <aside class="demo-aside glass-card">
+        <p class="aside-label">Mesh observability</p>
+        <p>Every path stores a <code>trace_id</code> and retrieval metadata. Open <a href="/trace">/trace</a> after generating, or inspect token usage in the <a href="{{ mesh_dashboard_url }}" target="_blank" rel="noreferrer">Mesh dashboard ↗</a>.</p>
+        <p class="aside-label">Share moment</p>
+        <p>After generating, use <strong>Share path</strong> on the dashboard for a public <code>/path/{id}</code> card — no PII, print-friendly export included.</p>
+        <p class="aside-label">60-second script</p>
+        <ol class="demo-quick-script">
+          <li>Explore → search <em>production RAG</em></li>
+          <li>Dashboard → generate path</li>
+          <li>Trace → copy Mesh trace ID</li>
+          <li>Refresh path → show what changed</li>
+        </ol>
+      </aside>
+    </section>
+  </main>
+</div>
+
+<div id="demo-overlay" class="demo-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="demo-overlay-title">
+  <div class="demo-overlay-card">
+    <p class="eyebrow"><span class="eyebrow-dot"></span> Guided demo</p>
+    <h2 id="demo-overlay-title">Step 1</h2>
+    <p id="demo-overlay-detail"></p>
+    <div class="demo-overlay-actions">
+      <button type="button" class="button button-quiet" id="demo-overlay-skip">Skip guide</button>
+      <button type="button" class="button button-primary" id="demo-overlay-next">Next step</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/demo.js" defer></script>
+{% endblock %}

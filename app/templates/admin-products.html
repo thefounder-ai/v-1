@@ -19,6 +19,8 @@
       <div class="admin-toolbar-actions">
         <span class="sync-legend"><i class="sync-dot sync-pending"></i> Pending: {{ products|selectattr("vector_sync_status", "ne", "synced")|list|length }}</span>
         <form method="post" action="/admin/products/index"><button class="button button-small button-quiet" type="submit">Index pending resources ↗</button></form>
+        <button type="button" class="button button-small button-quiet" id="admin-demo-seed">Seed demo activity</button>
+        <span id="demo-seed-status" class="inline-status" role="status"></span>
       </div>
     </div>
     <div class="admin-table-wrap">
@@ -47,4 +49,7 @@
   </main>
   </div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script src="/static/demo.js" defer></script>
 {% endblock %}

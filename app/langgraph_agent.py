@@ -31,6 +31,8 @@ class PipelineState(TypedDict, total=False):
     safe_items: list[dict[str, Any]]
     result: dict[str, Any]
     failed: bool
+    previous_recommendation: dict[str, Any] | None
+    change_explanation: str | None
 
 
 def _import_stages():
@@ -42,6 +44,8 @@ def _import_stages():
         _stage_analyze,
         _stage_retrieve,
         _stage_evaluate,
+        moderate_retrieval_query,
+        moderation_error_message,
     )
     return (
         RecommendationError,
@@ -51,17 +55,13 @@ def _import_stages():
         _stage_analyze,
         _stage_retrieve,
         _stage_evaluate,
+        moderate_retrieval_query,
+        moderation_error_message,
     )
 
 
 async def node_analyze(state: PipelineState) -> PipelineState:
-    (
-        RecommendationError,
-        *_,
-        _stage_analyze,
-        _,
-        _,
-    ) = _import_stages()
+    RecommendationError, _, _, _, _stage_analyze, _, _, _, _ = _import_stages()
     graph = state["graph"]
     try:
         profile, query = await _stage_analyze(
@@ -84,7 +84,7 @@ async def node_analyze(state: PipelineState) -> PipelineState:
 async def node_retrieve(state: PipelineState) -> PipelineState:
     if state.get("failed"):
         return state
-    RecommendationError, _, _, _, _, _stage_retrieve, _ = _import_stages()
+    RecommendationError, _, _, _, _, _stage_retrieve, _, _, _ = _import_stages()
     graph = state["graph"]
     try:
         matches, candidates = await _stage_retrieve(state["query"], graph)
@@ -102,7 +102,7 @@ async def node_retrieve(state: PipelineState) -> PipelineState:
 async def node_evaluate(state: PipelineState) -> PipelineState:
     if state.get("failed"):
         return state
-    _, _, _, _, _, _, _stage_evaluate = _import_stages()
+    _, _, _, _, _, _, _stage_evaluate, _, _ = _import_stages()
     graph = state["graph"]
     relevant = _stage_evaluate(
         state["candidates"],
@@ -114,10 +114,28 @@ async def node_evaluate(state: PipelineState) -> PipelineState:
     return {**state, "relevant_candidates": relevant, "failed": False}
 
 
+async def node_moderate(state: PipelineState) -> PipelineState:
+    if state.get("failed"):
+        return state
+    _, _, _, _, _, _, _, moderate_retrieval_query, moderation_error_message = _import_stages()
+    graph = state["graph"]
+    moderate_started = graph.start_stage("moderate")
+    allowed, reason = moderate_retrieval_query(state["query"])
+    if not allowed:
+        if graph.retrieval is None:
+            graph.retrieval = {}
+        graph.retrieval["moderation_blocked"] = reason
+        graph.fail_stage("moderate", moderate_started, reason)
+        log_graph_state(logger, graph)
+        return {**state, "failed": True, "moderation_reason": reason}
+    graph.finish_stage("moderate", moderate_started, moderation_status="allowed")
+    return {**state, "failed": False}
+
+
 async def node_generate(state: PipelineState) -> PipelineState:
     if state.get("failed"):
         return state
-    RecommendationError, _mesh_narrative, _, _, _, _, _ = _import_stages()
+    RecommendationError, _mesh_narrative, _, _, _, _, _, _, _ = _import_stages()
     graph = state["graph"]
     generate_started = graph.start_stage("generate")
     try:
@@ -138,7 +156,7 @@ async def node_generate(state: PipelineState) -> PipelineState:
 async def node_validate(state: PipelineState) -> PipelineState:
     if state.get("failed"):
         return state
-    RecommendationError, _, _safe_narrative, _, _, _, _ = _import_stages()
+    RecommendationError, _, _safe_narrative, _, _, _, _, _, _ = _import_stages()
     graph = state["graph"]
     validate_started = graph.start_stage("validate")
     summary, next_step, safe_items = _safe_narrative(
@@ -165,9 +183,32 @@ async def node_validate(state: PipelineState) -> PipelineState:
 async def node_persist(state: PipelineState) -> PipelineState:
     if state.get("failed"):
         return state
-    RecommendationError, _, _, _insert_recommendation, _, _, _ = _import_stages()
+    RecommendationError, _, _, _insert_recommendation, _, _, _, _, _ = _import_stages()
     from app.config import settings
+    from app.recommendations import _mesh_change_explanation, finalize_retrieval_metadata
+
     graph = state["graph"]
+    change_explanation = state.get("change_explanation")
+    previous = state.get("previous_recommendation")
+    if previous and not change_explanation:
+        signal_events = (graph.retrieval or {}).get("trigger_events") or []
+        try:
+            change_explanation = await _mesh_change_explanation(
+                state.get("profile"),
+                signal_events,
+                previous,
+                state["summary"],
+                state["next_step"],
+                state["relevant_candidates"],
+            )
+        except Exception:
+            from app.recommendations import fallback_change_explanation
+            change_explanation = fallback_change_explanation(
+                state.get("profile"),
+                signal_events,
+                previous,
+                state["relevant_candidates"],
+            )
     persist_started = graph.start_stage("persist")
     try:
         result = await _insert_recommendation(
@@ -180,12 +221,26 @@ async def node_persist(state: PipelineState) -> PipelineState:
             state["safe_items"],
             settings.mesh_chat_model,
             graph,
+            change_explanation=change_explanation,
         )
     except RecommendationError:
         graph.fail_stage("persist", persist_started, "history_unavailable")
         log_graph_state(logger, graph)
         return {**state, "failed": True}
     graph.finish_stage("persist", persist_started, item_count=len(state["safe_items"]))
+    complete_metadata = finalize_retrieval_metadata(graph)
+    result["retrieval_metadata"] = complete_metadata
+    if change_explanation:
+        result["change_explanation"] = change_explanation
+    try:
+        from app.recommendations import _patch_recommendation_fields
+        await _patch_recommendation_fields(
+            state["access_token"],
+            result["id"],
+            {"retrieval_metadata": complete_metadata},
+        )
+    except RecommendationError:
+        pass
     graph.complete()
     log_graph_state(logger, graph)
     return {**state, "result": result, "failed": False}
@@ -196,13 +251,15 @@ def build_recommendation_graph() -> Any:
     workflow.add_node("analyze", node_analyze)
     workflow.add_node("retrieve", node_retrieve)
     workflow.add_node("evaluate", node_evaluate)
+    workflow.add_node("moderate", node_moderate)
     workflow.add_node("generate", node_generate)
     workflow.add_node("validate", node_validate)
     workflow.add_node("persist", node_persist)
     workflow.set_entry_point("analyze")
     workflow.add_edge("analyze", "retrieve")
     workflow.add_edge("retrieve", "evaluate")
-    workflow.add_edge("evaluate", "generate")
+    workflow.add_edge("evaluate", "moderate")
+    workflow.add_edge("moderate", "generate")
     workflow.add_edge("generate", "validate")
     workflow.add_edge("validate", "persist")
     workflow.add_edge("persist", END)
@@ -224,7 +281,13 @@ async def run_recommendation_graph(
     user_id: str,
     learner: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    from app.recommendations import RecommendationError
+    from app.recommendations import RecommendationError, latest_recommendation, moderation_error_message
+
+    previous_recommendation = None
+    try:
+        previous_recommendation = await latest_recommendation(access_token, user_id)
+    except RecommendationError:
+        previous_recommendation = None
 
     graph_state = RecommendationGraphState()
     initial: PipelineState = {
@@ -233,8 +296,13 @@ async def run_recommendation_graph(
         "learner": learner,
         "graph": graph_state,
         "failed": False,
+        "previous_recommendation": previous_recommendation,
+        "change_explanation": None,
     }
     final = await recommendation_graph().ainvoke(initial)
     if final.get("failed") or not final.get("result"):
+        moderation_reason = final.get("moderation_reason") or (graph_state.retrieval or {}).get("moderation_blocked")
+        if moderation_reason:
+            raise RecommendationError(moderation_error_message(str(moderation_reason)))
         raise RecommendationError("A grounded recommendation could not be produced.")
     return final["result"]

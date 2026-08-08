@@ -1,0 +1,83 @@
+{% macro path_intelligence_panel(path_intelligence, recommendation) %}
+{% if path_intelligence and recommendation %}
+<section class="dash-panel dash-intelligence-panel" id="path-intelligence-panel">
+  <div class="dash-panel-head">
+    <div>
+      <h2>Path intelligence</h2>
+      <p class="panel-sub">Generic baseline vs your grounded path</p>
+    </div>
+    <div class="health-score-card">
+      <div class="health-score-ring" style="--health-score: {{ path_intelligence.path_health.score }}">
+        <strong>{{ path_intelligence.path_health.score }}</strong>
+      </div>
+      <div>
+        <span class="health-score-label">{{ path_intelligence.path_health.label }}</span>
+        <small>Path health</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="health-factor-grid">
+    {% for factor in path_intelligence.path_health.factors %}
+    <div class="health-factor">
+      <span>{{ factor.name }}</span>
+      <strong>{{ factor.score }}/{{ factor.max }}</strong>
+      <small>{{ factor.detail }}</small>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="counterfactual-grid">
+    <article class="counterfactual-card">
+      <p class="aside-label">Generic popular path</p>
+      <small class="counterfactual-meta">{{ path_intelligence.generic_baseline.source|replace('_', ' ') }}</small>
+      <ol class="counterfactual-list">
+        {% for item in path_intelligence.generic_baseline.items %}
+        <li>
+          <strong>{{ item.title }}</strong>
+          <small>{{ item.category }}{% if item.difficulty %} · {{ item.difficulty }}{% endif %}</small>
+        </li>
+        {% endfor %}
+      </ol>
+    </article>
+    <article class="counterfactual-card counterfactual-card-personal">
+      <p class="aside-label">Your personalized path</p>
+      <small class="counterfactual-meta">{{ path_intelligence.overlap_count }} overlap · {{ recommendation.trigger_event_count }} signals</small>
+      <ol class="counterfactual-list">
+        {% for item in path_intelligence.personalized_items %}
+        <li>
+          <strong>{{ item.title }}</strong>
+          <small>{{ item.category }}{% if item.difficulty %} · {{ item.difficulty }}{% endif %}</small>
+        </li>
+        {% endfor %}
+      </ol>
+    </article>
+  </div>
+
+  {% if path_intelligence.interest_drift.categories %}
+  <div class="drift-panel">
+    <p class="aside-label">Interest drift · now vs {{ path_intelligence.interest_drift.baseline_label|lower }}</p>
+    <div class="drift-chart">
+      {% set max_weight = path_intelligence.interest_drift.max_weight or 1 %}
+      {% for row in path_intelligence.interest_drift.categories %}
+      <div class="drift-row">
+        <span class="drift-label">{{ row.category }}</span>
+        <div class="drift-bars">
+          <div class="drift-bar drift-bar-previous" style="width: {{ [row.previous / max_weight * 100, 100]|min }}%"></div>
+          <div class="drift-bar drift-bar-current" style="width: {{ [row.current / max_weight * 100, 100]|min }}%"></div>
+        </div>
+        <span class="drift-delta {% if row.delta > 0 %}is-up{% elif row.delta < 0 %}is-down{% endif %}">
+          {% if row.delta > 0 %}+{% endif %}{{ row.delta }}
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="drift-legend">
+      <span><i class="legend-previous"></i> {{ path_intelligence.interest_drift.baseline_label }}</span>
+      <span><i class="legend-current"></i> Now</span>
+    </div>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+{% endmacro %}

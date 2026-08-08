@@ -174,7 +174,7 @@ class CoreSmokeTests(unittest.TestCase):
         from app.recommendations import _stage_evaluate
 
         stages = _import_stages()
-        self.assertIs(stages[-1], _stage_evaluate)
+        self.assertIs(stages[6], _stage_evaluate)
 
     def test_langgraph_graph_compiles(self):
         from app.langgraph_agent import build_recommendation_graph
@@ -187,6 +187,188 @@ class CoreSmokeTests(unittest.TestCase):
             __import__("app.recommendations", fromlist=["update_recommendation_status"]).update_recommendation_status
         )
         self.assertIn("expired", source)
+
+    def test_pipeline_timings_from_stages(self):
+        from app.recommendations import pipeline_timings_from_stages
+
+        stages = [
+            {"name": "retrieve", "duration_ms": 120},
+            {"name": "generate", "duration_ms": 890},
+            {"name": "validate", "duration_ms": 40},
+        ]
+        timings = pipeline_timings_from_stages(stages)
+        self.assertEqual(timings["retrieve_ms"], 120)
+        self.assertEqual(timings["generate_ms"], 890)
+        self.assertEqual(timings["validate_ms"], 40)
+        self.assertEqual(timings["total_ms"], 1050)
+
+    def test_annotate_retrieval_candidates_marks_selected_and_rejected(self):
+        from app.recommendations import annotate_retrieval_candidates
+
+        retrieval: dict = {}
+        matches = [
+            {"product_id": "p1", "score": 0.91},
+            {"product_id": "p2", "score": 0.82},
+            {"product_id": "p3", "score": 0.74},
+        ]
+        candidates = [
+            {"id": "p1", "title": "Python Basics", "category": "Backend", "difficulty": "beginner"},
+            {"id": "p2", "title": "FastAPI Guide", "category": "Backend", "difficulty": "intermediate"},
+            {"id": "p3", "title": "SQL Intro", "category": "Data", "difficulty": "beginner"},
+        ]
+        selected = [candidates[0], candidates[2]]
+        annotate_retrieval_candidates(retrieval, matches, candidates, selected)
+
+        self.assertEqual(len(retrieval["candidates"]), 3)
+        self.assertTrue(retrieval["candidates"][0]["selected"])
+        self.assertFalse(retrieval["candidates"][1]["selected"])
+        self.assertTrue(retrieval["candidates"][2]["selected"])
+        self.assertEqual(retrieval["selected_count"], 2)
+        self.assertEqual(retrieval["rejected_count"], 1)
+        self.assertEqual(retrieval["candidates"][0]["title"], "Python Basics")
+        self.assertEqual(retrieval["candidates"][0]["score"], 0.91)
+
+    def test_finalize_retrieval_metadata_includes_pipeline_stages(self):
+        from app.agent_graph import RecommendationGraphState
+        from app.recommendations import finalize_retrieval_metadata
+
+        state = RecommendationGraphState(trace_id="trace-1")
+        state.stages = [
+            {"name": "retrieve", "status": "completed", "duration_ms": 120, "match_count": 5},
+            {"name": "generate", "status": "completed", "duration_ms": 800, "model": "mesh"},
+        ]
+        state.retrieval = {"catalog_match_count": 5, "top_score": 0.88}
+        metadata = finalize_retrieval_metadata(state)
+
+        self.assertIn("pipeline_timings", metadata)
+        self.assertIn("pipeline_stages", metadata)
+        self.assertEqual(metadata["pipeline_stages"][0]["name"], "retrieve")
+        self.assertEqual(metadata["pipeline_timings"]["retrieve_ms"], 120)
+        self.assertEqual(metadata["pipeline_timings"]["total_ms"], 920)
+
+    def test_format_signal_events_for_timeline(self):
+        from app.recommendations import format_signal_events
+
+        events = [
+            {
+                "event_type": "catalog_search",
+                "search_query": "python async",
+                "occurred_at": "2026-08-08T10:00:00+00:00",
+            },
+            {
+                "event_type": "bookmark_added",
+                "resource_id": "p1",
+                "occurred_at": "2026-08-08T10:05:00+00:00",
+            },
+        ]
+        products = {
+            "p1": {"title": "FastAPI Patterns", "category": "Backend"},
+        }
+        formatted = format_signal_events(events, products)
+        self.assertEqual(len(formatted), 2)
+        self.assertEqual(formatted[0]["kind"], "signal")
+        self.assertEqual(formatted[0]["detail"], "python async")
+        self.assertEqual(formatted[1]["detail"], "FastAPI Patterns")
+
+    def test_build_causality_timeline_orders_signals_then_stages(self):
+        from app.recommendations import build_causality_timeline
+
+        signals = [
+            {
+                "kind": "signal",
+                "label": "Searched catalog",
+                "detail": "rust",
+                "occurred_at": "2026-08-08T09:00:00+00:00",
+            }
+        ]
+        stages = [
+            {"name": "analyze", "status": "completed", "duration_ms": 12, "completed_at": "2026-08-08T09:00:01+00:00"},
+            {"name": "retrieve", "status": "completed", "duration_ms": 88, "completed_at": "2026-08-08T09:00:02+00:00"},
+        ]
+        timeline = build_causality_timeline(signals, stages)
+        self.assertEqual(len(timeline), 3)
+        self.assertEqual(timeline[0]["kind"], "signal")
+        self.assertEqual(timeline[1]["name"], "analyze")
+        self.assertEqual(timeline[2]["name"], "retrieve")
+
+    def test_fallback_change_explanation_uses_catalog_titles_only(self):
+        from app.recommendations import fallback_change_explanation
+
+        explanation = fallback_change_explanation(
+            {"signal_summary": "interest in Backend"},
+            [{"label": "Searched catalog", "detail": "fastapi"}],
+            {
+                "summary": "Old path",
+                "items": [{"title": "Python Basics"}],
+            },
+            [{"title": "FastAPI Guide"}, {"title": "SQL Intro"}],
+        )
+        self.assertIn("FastAPI Guide", explanation)
+        self.assertIn("fastapi", explanation.lower())
+
+    def test_trace_template_renders_retrieval_candidates(self):
+        templates = Environment(
+            loader=FileSystemLoader(Path(__file__).resolve().parents[1] / "app" / "templates"),
+            autoescape=True,
+        )
+        rendered = templates.get_template("trace.html").render(
+            request=None,
+            page_title="Trace",
+            error=None,
+            mesh_dashboard_url="https://developers.meshapi.ai",
+            recommendation={
+                "summary": "Build Python foundations.",
+                "model": "mesh-model",
+                "trace_id": "trace-abc-123",
+                "trigger_event_count": 4,
+                "retrieval_query": "python backend beginner",
+                "retrieval_metadata": {
+                    "catalog_match_count": 3,
+                    "top_score": 0.91,
+                    "mean_score": 0.82,
+                    "selected_count": 2,
+                    "pipeline_timings": {"retrieve_ms": 100, "generate_ms": 800, "total_ms": 900},
+                    "candidates": [
+                        {
+                            "rank": 1,
+                            "product_id": "p1",
+                            "title": "Python Tutorial",
+                            "category": "Backend",
+                            "difficulty": "beginner",
+                            "score": 0.91,
+                            "selected": True,
+                        },
+                        {
+                            "rank": 2,
+                            "product_id": "p2",
+                            "title": "FastAPI",
+                            "category": "Backend",
+                            "difficulty": "intermediate",
+                            "score": 0.84,
+                            "selected": False,
+                        },
+                    ],
+                },
+                "graph_stages": [
+                    {"name": "retrieve", "status": "completed", "duration_ms": 100},
+                    {"name": "generate", "status": "completed", "duration_ms": 800},
+                ],
+                "items": [
+                    {
+                        "rank": 1,
+                        "title": "Python Tutorial",
+                        "reason": "Matches your goal.",
+                        "retrieval_score": 0.91,
+                    }
+                ],
+            },
+            recommendation_history=[],
+        )
+        self.assertIn("Qdrant candidates", rendered)
+        self.assertIn("Python Tutorial", rendered)
+        self.assertIn("is-selected", rendered)
+        self.assertIn("is-rejected", rendered)
+        self.assertIn("Copy trace ID", rendered)
 
     def test_dashboard_template_renders_recommendation_items(self):
         templates = Environment(
