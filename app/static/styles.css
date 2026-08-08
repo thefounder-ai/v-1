@@ -2088,3 +2088,174 @@ body.sidebar-open { overflow: hidden; }
   .lp-pipeline-stage { min-width: calc(50% - 20px); }
   .lp-pipeline-chevron { display: none; }
 }
+
+/* —— Landing: highlighted nav + product preview gallery —— */
+.lp-nav-preview-btn {
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--green) 0%, var(--green-dark) 100%);
+  color: var(--white) !important;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 4px 16px rgba(45, 90, 75, 0.25);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.lp-nav-preview-btn:hover {
+  color: var(--white) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(45, 90, 75, 0.35);
+}
+
+.lp-preview-section {
+  background: linear-gradient(180deg, #eef2ed 0%, var(--paper) 100%);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.lp-preview-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 40px 0 24px;
+}
+.lp-preview-tab {
+  padding: 10px 18px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+.lp-preview-tab:hover { border-color: var(--green); color: var(--green-dark); }
+.lp-preview-tab.is-active {
+  background: var(--green);
+  border-color: var(--green);
+  color: var(--white);
+}
+
+.lp-preview-stage {
+  display: grid;
+  grid-template-columns: 1.4fr 0.6fr;
+  gap: 24px;
+  align-items: start;
+}
+.lp-preview-frame {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--white);
+  box-shadow: 0 24px 64px rgba(26, 35, 32, 0.12);
+}
+.lp-preview-chrome {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  background: #f6f8f6;
+  font-size: 11px;
+  color: var(--muted);
+}
+.lp-preview-chrome span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #d0dbd4;
+}
+.lp-preview-chrome em { margin-left: auto; font-style: normal; }
+.lp-preview-image-wrap {
+  background: #f0f2ef;
+  line-height: 0;
+}
+.lp-preview-image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.lp-preview-meta {
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--white);
+}
+.lp-preview-meta h3 {
+  margin: 0 0 12px;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 20px;
+  letter-spacing: -0.03em;
+  color: var(--green-dark);
+}
+.lp-preview-meta p {
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+.lp-preview-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lp-preview-tags li {
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--sage);
+  color: var(--green-dark);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.lp-preview-thumbs {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 10px;
+  margin-top: 20px;
+}
+.lp-preview-thumb {
+  display: grid;
+  gap: 6px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: none;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 150ms ease, transform 150ms ease;
+}
+.lp-preview-thumb:hover { transform: translateY(-2px); }
+.lp-preview-thumb.is-active { border-color: var(--green); }
+.lp-preview-thumb img {
+  width: 100%;
+  aspect-ratio: 16/10;
+  object-fit: cover;
+  object-position: top left;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+.lp-preview-thumb span {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.lp-preview-thumb.is-active span { color: var(--green-dark); }
+
+@media (max-width: 960px) {
+  .lp-preview-stage { grid-template-columns: 1fr; }
+  .lp-preview-thumbs { grid-template-columns: repeat(5, 1fr); }
+  .site-nav .lp-nav-preview-btn { order: -1; }
+}
+
+@media (max-width: 600px) {
+  .lp-preview-thumbs { grid-template-columns: repeat(3, 1fr); }
+  .lp-preview-tabs { gap: 6px; }
+  .lp-preview-tab { padding: 8px 12px; font-size: 12px; }
+}

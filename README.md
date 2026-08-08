@@ -22,6 +22,50 @@ Open `/demo` for a guided walkthrough with auto-run. Sign up with any email, cho
 
 ---
 
+## Platform preview
+
+Real screenshots from the live app — click through what judges should see.
+
+### Dashboard & AI path
+Grounded recommendations with path intelligence, health score, and comparison vs generic paths.
+
+![Dashboard with path intelligence](./docs/preview/dashboard.png)
+
+### Semantic explore
+79+ resources with Qdrant semantic search, career goal filters, and live Supabase metadata.
+
+![Semantic catalog explore](./docs/preview/explore.png)
+
+### Learning path & progress
+Structured resources aligned to your career goal with completion tracking.
+
+![Learning path with progress](./docs/preview/learning-path.png)
+
+### Live activity tracking
+Real-time page views and agent insight on every resource — batched, non-blocking events.
+
+![Resource detail with live activity](./docs/preview/resource-detail.png)
+
+### LangGraph trace & Qdrant scores
+Full pipeline observability with retrieval scores, selected vs rejected candidates.
+
+| Trace pipeline | Qdrant candidates |
+|---|---|
+| ![LangGraph trace](./docs/preview/trace.png) | ![Qdrant retrieval scores](./docs/preview/trace-candidates.png) |
+
+### Admin dual-write & sync health
+Catalog CRUD writes to Supabase + Qdrant. Sync health confirms zero drift.
+
+| Admin catalog | Vector sync |
+|---|---|
+| ![Admin catalog](./docs/preview/admin-catalog.png) | ![Sync health](./docs/preview/sync-health.png) |
+
+Also see: [Bookmarks](./docs/preview/bookmarks.png) · [Recommendation history](./docs/preview/history.png)
+
+**Live preview gallery:** [v-1-ora9.onrender.com/#preview](https://v-1-ora9.onrender.com/#preview)
+
+---
+
 ## How it works
 
 ```mermaid

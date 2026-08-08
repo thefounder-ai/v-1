@@ -14,6 +14,7 @@
       <a href="#how-it-works">How it works</a>
       <a href="#features">Features</a>
       <a href="#architecture">Architecture</a>
+      <a class="lp-nav-preview-btn" href="#preview">Product preview</a>
       <a href="/explore">Catalog</a>
       <a href="/demo">Judge demo</a>
       {% if user %}
@@ -81,6 +82,99 @@
           <p>Open <code>/demo</code>, click <strong>Auto-run demo</strong>, and watch the full story: browse → profile → generate path → trace → share.</p>
         </div>
         <a class="button button-primary button-lg" href="/demo">Open judge demo →</a>
+      </div>
+    </section>
+
+    {# ── Product preview gallery (real screenshots) ── #}
+    <section class="section lp-preview-section" id="preview">
+      <div class="container">
+        <div class="section-intro centered">
+          <p class="eyebrow">Product preview</p>
+          <h2>See the full platform — <em>every screen judges care about</em></h2>
+          <p>Real screenshots from the live app: grounded recommendations, semantic search, LangGraph trace, and admin dual-write.</p>
+        </div>
+
+        <div class="lp-preview-gallery" data-preview-gallery>
+          <div class="lp-preview-tabs" role="tablist" aria-label="Product screenshots">
+            <button type="button" class="lp-preview-tab is-active" role="tab" aria-selected="true" data-preview-tab="dashboard">Dashboard</button>
+            <button type="button" class="lp-preview-tab" role="tab" aria-selected="false" data-preview-tab="explore">Explore</button>
+            <button type="button" class="lp-preview-tab" role="tab" aria-selected="false" data-preview-tab="learning-path">Learning path</button>
+            <button type="button" class="lp-preview-tab" role="tab" aria-selected="false" data-preview-tab="resource-detail">Live activity</button>
+            <button type="button" class="lp-preview-tab" role="tab" aria-selected="false" data-preview-tab="trace">Trace</button>
+            <button type="button" class="lp-preview-tab" role="tab" aria-selected="false" data-preview-tab="history">History</button>
+            <button type="button" class="lp-preview-tab" role="tab" aria-selected="false" data-preview-tab="admin-catalog">Admin</button>
+          </div>
+
+          <div class="lp-preview-stage">
+            <div class="lp-preview-frame">
+              <div class="lp-preview-chrome">
+                <span></span><span></span><span></span>
+                <em class="lp-preview-url" data-preview-url>v-1-ora9.onrender.com/dashboard</em>
+              </div>
+              <div class="lp-preview-image-wrap">
+                <img
+                  class="lp-preview-image"
+                  data-preview-image
+                  src="/static/preview/dashboard.png"
+                  alt="SkillOrbit dashboard showing grounded AI learning path with path intelligence"
+                  loading="lazy"
+                />
+              </div>
+            </div>
+            <div class="lp-preview-meta">
+              <h3 data-preview-title>AI dashboard with path intelligence</h3>
+              <p data-preview-desc>Grounded next step, interest signals, path health score (61), and comparison vs a generic popular path — all from real browsing behavior.</p>
+              <ul class="lp-preview-tags" data-preview-tags>
+                <li>LangGraph</li>
+                <li>Qdrant scores</li>
+                <li>Mesh narrative</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="lp-preview-thumbs">
+            <button type="button" class="lp-preview-thumb is-active" data-preview-tab="dashboard">
+              <img src="/static/preview/dashboard.png" alt="" loading="lazy" />
+              <span>Dashboard</span>
+            </button>
+            <button type="button" class="lp-preview-thumb" data-preview-tab="explore">
+              <img src="/static/preview/explore.png" alt="" loading="lazy" />
+              <span>Explore</span>
+            </button>
+            <button type="button" class="lp-preview-thumb" data-preview-tab="learning-path">
+              <img src="/static/preview/learning-path.png" alt="" loading="lazy" />
+              <span>Path</span>
+            </button>
+            <button type="button" class="lp-preview-thumb" data-preview-tab="resource-detail">
+              <img src="/static/preview/resource-detail.png" alt="" loading="lazy" />
+              <span>Activity</span>
+            </button>
+            <button type="button" class="lp-preview-thumb" data-preview-tab="bookmarks">
+              <img src="/static/preview/bookmarks.png" alt="" loading="lazy" />
+              <span>Saved</span>
+            </button>
+            <button type="button" class="lp-preview-thumb" data-preview-tab="history">
+              <img src="/static/preview/history.png" alt="" loading="lazy" />
+              <span>History</span>
+            </button>
+            <button type="button" class="lp-preview-thumb" data-preview-tab="trace">
+              <img src="/static/preview/trace.png" alt="" loading="lazy" />
+              <span>Trace</span>
+            </button>
+            <button type="button" class="lp-preview-thumb" data-preview-tab="trace-candidates">
+              <img src="/static/preview/trace-candidates.png" alt="" loading="lazy" />
+              <span>Qdrant</span>
+            </button>
+            <button type="button" class="lp-preview-thumb" data-preview-tab="admin-catalog">
+              <img src="/static/preview/admin-catalog.png" alt="" loading="lazy" />
+              <span>Admin</span>
+            </button>
+            <button type="button" class="lp-preview-thumb" data-preview-tab="sync-health">
+              <img src="/static/preview/sync-health.png" alt="" loading="lazy" />
+              <span>Sync</span>
+            </button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -445,4 +539,121 @@
     <span class="footer-note">SmartReco Build Challenge 2026</span>
   </footer>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  "use strict";
+  var slides = {
+    dashboard: {
+      title: "AI dashboard with path intelligence",
+      desc: "Grounded next step, interest signals, path health score, and comparison vs a generic popular path — all from real browsing behavior.",
+      url: "v-1-ora9.onrender.com/dashboard",
+      tags: ["LangGraph", "Qdrant scores", "Mesh narrative"],
+      alt: "SkillOrbit dashboard with grounded AI learning path"
+    },
+    explore: {
+      title: "Semantic catalog search",
+      desc: "Browse 79+ resources with Qdrant + Mesh embeddings. Filter by career goal, category, level, and type.",
+      url: "v-1-ora9.onrender.com/explore",
+      tags: ["Qdrant", "Mesh embeddings", "Supabase metadata"],
+      alt: "Explore page with semantic search and filters"
+    },
+    "learning-path": {
+      title: "Structured learning path",
+      desc: "Resources aligned to your onboarding goal — track completion % and mark modules done as you progress.",
+      url: "v-1-ora9.onrender.com/learning-path",
+      tags: ["Progress tracking", "Career goals", "Catalog-grounded"],
+      alt: "Learning path page with progress tracking"
+    },
+    "resource-detail": {
+      title: "Live activity + agent insight",
+      desc: "Every page view is tracked in real time. The agent insight panel shows what SkillOrbit observed and your recommended next step.",
+      url: "v-1-ora9.onrender.com/resource/{id}",
+      tags: ["Batched events", "Live signals", "Agent insight"],
+      alt: "Resource detail with live activity feed and agent insight"
+    },
+    bookmarks: {
+      title: "Saved library",
+      desc: "Bookmarked resources boost your interest profile — high-signal events that shape your personalized path.",
+      url: "v-1-ora9.onrender.com/bookmarks",
+      tags: ["bookmark_added events", "Interest profile", "Saved resources"],
+      alt: "Bookmarks page with saved learning resources"
+    },
+    history: {
+      title: "Grounded recommendation history",
+      desc: "Every path stored with trigger signals, retrieval metadata, and catalog-grounded reasons. Refresh to see what changed.",
+      url: "v-1-ora9.onrender.com/recommendations",
+      tags: ["Stored paths", "Change diff", "Trigger signals"],
+      alt: "Recommendation history with grounded paths"
+    },
+    trace: {
+      title: "LangGraph pipeline trace",
+      desc: "Full observability: analyze → retrieve → evaluate → generate stages with timings, Mesh trace ID, and model info.",
+      url: "v-1-ora9.onrender.com/trace",
+      tags: ["LangGraph", "Mesh trace ID", "Pipeline timings"],
+      alt: "Trace page showing LangGraph pipeline stages"
+    },
+    "trace-candidates": {
+      title: "Qdrant retrieval scores",
+      desc: "See exactly which catalog items were retrieved, their similarity scores, and which were selected vs rejected.",
+      url: "v-1-ora9.onrender.com/trace",
+      tags: ["Top score 0.61", "20 matches", "5 selected"],
+      alt: "Qdrant candidate table with retrieval scores"
+    },
+    "admin-catalog": {
+      title: "Admin catalog + dual-write",
+      desc: "Add, edit, or deactivate resources. Every change writes to Supabase and indexes vectors in Qdrant automatically.",
+      url: "v-1-ora9.onrender.com/admin/products",
+      tags: ["Admin CRUD", "Vector sync", "Demo seed"],
+      alt: "Admin catalog management page"
+    },
+    "sync-health": {
+      title: "Vector sync health",
+      desc: "79 active resources, all synced with Qdrant. Drift detection ensures SQL catalog and vector index stay aligned.",
+      url: "v-1-ora9.onrender.com/admin/sync-health",
+      tags: ["Dual-write", "79 synced", "0 pending"],
+      alt: "Sync health page showing Supabase-Qdrant alignment"
+    }
+  };
+
+  var gallery = document.querySelector("[data-preview-gallery]");
+  if (!gallery) return;
+
+  var image = gallery.querySelector("[data-preview-image]");
+  var titleEl = gallery.querySelector("[data-preview-title]");
+  var descEl = gallery.querySelector("[data-preview-desc]");
+  var urlEl = gallery.querySelector("[data-preview-url]");
+  var tagsEl = gallery.querySelector("[data-preview-tags]");
+
+  function activate(key) {
+    var slide = slides[key];
+    if (!slide || !image) return;
+    image.src = "/static/preview/" + key + ".png";
+    image.alt = slide.alt;
+    if (titleEl) titleEl.textContent = slide.title;
+    if (descEl) descEl.textContent = slide.desc;
+    if (urlEl) urlEl.textContent = slide.url;
+    if (tagsEl) {
+      tagsEl.innerHTML = slide.tags.map(function (t) {
+        return "<li>" + t + "</li>";
+      }).join("");
+    }
+    gallery.querySelectorAll("[data-preview-tab]").forEach(function (el) {
+      var active = el.getAttribute("data-preview-tab") === key;
+      el.classList.toggle("is-active", active);
+      if (el.getAttribute("role") === "tab") {
+        el.setAttribute("aria-selected", active ? "true" : "false");
+      }
+    });
+  }
+
+  gallery.addEventListener("click", function (event) {
+    var trigger = event.target.closest("[data-preview-tab]");
+    if (!trigger) return;
+    activate(trigger.getAttribute("data-preview-tab"));
+  });
+})();
+</script>
 {% endblock %}
