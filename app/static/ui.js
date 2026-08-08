@@ -314,9 +314,11 @@
       "</section>";
   }
 
-  function renderRecommendationPanel(data, options) {
+    function renderRecommendationPanel(data, options) {
     const body = document.getElementById("recommendation-panel-body");
     if (!body || !data) return;
+    const panel = document.getElementById("recommendation-panel");
+    if (panel) panelLoader(panel, false);
     const resend = options && options.resendConfigured;
     const items = (data.items || []).map(function (item, index) {
       const rank = item.rank || index + 1;

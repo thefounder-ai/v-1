@@ -101,6 +101,17 @@ async def lifespan(_: FastAPI):
 BASE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
+
+def _interest_snapshot_labels(value: Any) -> list[str]:
+    if isinstance(value, list):
+        return [str(item) for item in value[:4] if item]
+    if isinstance(value, str) and value.strip():
+        return [value.strip()]
+    return []
+
+
+templates.env.filters["interest_labels"] = _interest_snapshot_labels
+
 app = FastAPI(
     title="SkillOrbit",
     description="An AI career learning navigator powered by behavioral signals.",
@@ -537,7 +548,7 @@ async def dashboard_page(request: Request) -> HTMLResponse:
     async def _fetch_activity() -> tuple[list[dict[str, Any]], str | None]:
         try:
             return await recent_events(token, user["id"], limit=12), None
-        except ActivityError as error:
+        except Exception as error:
             return [], str(error)
 
     async def _fetch_path_product_ids() -> list[str]:
@@ -546,43 +557,43 @@ async def dashboard_page(request: Request) -> HTMLResponse:
         try:
             path_products = await list_products_for_goal(goal)
             return [product["id"] for product in path_products]
-        except CatalogError:
+        except Exception:
             return []
 
     async def _fetch_progress() -> tuple[list[dict], str | None]:
         try:
             return await list_progress(token, user["id"]), None
-        except ProgressError as error:
+        except Exception as error:
             return [], str(error)
 
     async def _fetch_streak() -> int:
         try:
             return await learning_streak(token, user["id"])
-        except ProgressError:
+        except Exception:
             return 0
 
     async def _fetch_weekly_minutes() -> int:
         try:
             return await weekly_learning_minutes(token, user["id"])
-        except ProgressError:
+        except Exception:
             return 0
 
     async def _fetch_interest() -> tuple[dict[str, Any] | None, str | None]:
         try:
             return await get_interest_profile(token, user["id"]), None
-        except InterestProfileError as error:
+        except Exception as error:
             return None, str(error)
 
     async def _fetch_recommendation() -> tuple[dict[str, Any] | None, str | None]:
         try:
             return await latest_recommendation(token, user["id"]), None
-        except RecommendationError as error:
+        except Exception as error:
             return None, str(error)
 
     async def _fetch_recommendation_history() -> tuple[list[dict], str | None]:
         try:
             return await recommendation_history(token, user["id"]), None
-        except RecommendationError as error:
+        except Exception as error:
             return [], str(error)
 
     (

@@ -77,7 +77,7 @@
           <span>{{ recommendation.next_step }}</span>
         </div>
         <ol class="rec-items">
-          {% for item in recommendation['items'] %}
+          {% for item in recommendation.get('items') or [] %}
           <li>
             <a href="/resource/{{ item.product_id }}?from_rec={{ recommendation.id }}">
               <span class="rec-rank">{{ item.rank }}</span>
@@ -104,8 +104,9 @@
           {% endif %}
           <ul>
             <li>{{ recommendation.trigger_event_count }} behavioral signals at generation time</li>
-            {% if recommendation.interest_snapshot %}
-            <li>Interest focus: {{ recommendation.interest_snapshot[:4]|join(', ') }}</li>
+            {% set interest_labels = recommendation.interest_snapshot|interest_labels %}
+            {% if interest_labels %}
+            <li>Interest focus: {{ interest_labels|join(', ') }}</li>
             {% endif %}
             <li>{{ recommendation.retrieval_metadata.get('catalog_match_count', 0) }} catalog matches · top score {{ recommendation.retrieval_metadata.get('top_score', 0) }}</li>
             {% if recommendation.trace_id %}

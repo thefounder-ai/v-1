@@ -6,7 +6,6 @@
   const ui = window.SkillOrbitUI;
   const signalCountEl = document.getElementById("meaningful-signal-count");
   const feedEl = document.getElementById("live-activity-feed");
-  const countdownEl = document.getElementById("path-expiry-countdown");
   const seenFeedIds = new Set();
   if (feedEl) {
     feedEl.querySelectorAll("[data-event-id]").forEach(function (node) {
@@ -47,23 +46,25 @@
   }
 
   function updateCountdown() {
-    if (!countdownEl) return;
-    const expiresAt = countdownEl.dataset.expiresAt;
+    const el = document.getElementById("path-expiry-countdown");
+    if (!el) return;
+    const expiresAt = el.dataset.expiresAt;
     if (!expiresAt) return;
     const expiry = new Date(expiresAt);
+    if (Number.isNaN(expiry.getTime())) return;
     const now = new Date();
     const diffMs = expiry.getTime() - now.getTime();
-    const strong = countdownEl.querySelector("strong");
+    const strong = el.querySelector("strong");
     if (!strong) return;
     if (diffMs <= 0) {
       strong.textContent = "expired — refresh recommended";
-      countdownEl.classList.add("is-expired");
+      el.classList.add("is-expired");
       return;
     }
     const hours = Math.floor(diffMs / 3600000);
     const minutes = Math.floor((diffMs % 3600000) / 60000);
     strong.textContent = hours > 0 ? hours + "h " + minutes + "m" : minutes + "m";
-    countdownEl.classList.remove("is-expired");
+    el.classList.remove("is-expired");
   }
 
   const lastVisit = localStorage.getItem("skillorbit_last_visit_at");
