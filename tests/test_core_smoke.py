@@ -75,6 +75,100 @@ class CoreSmokeTests(unittest.TestCase):
         paths = {getattr(route, "path", "") for route in app.routes}
         self.assertIn("/trace", paths)
 
+    def test_weekly_digest_cron_route_registered(self):
+        paths = {getattr(route, "path", "") for route in app.routes}
+        self.assertIn("/api/cron/weekly-digest", paths)
+
+    def test_weekly_digest_due_after_seven_days(self):
+        from datetime import datetime, timedelta, timezone
+        from app.digest import weekly_digest_due
+
+        now = datetime(2026, 8, 8, tzinfo=timezone.utc)
+        anchor = now - timedelta(days=8)
+        self.assertTrue(
+            weekly_digest_due(
+                now=now,
+                account_anchor=anchor,
+                last_digest_sent=None,
+                interval_days=7,
+            )
+        )
+        self.assertFalse(
+            weekly_digest_due(
+                now=now,
+                account_anchor=now - timedelta(days=3),
+                last_digest_sent=None,
+                interval_days=7,
+            )
+        )
+
+    def test_weekly_digest_repeats_every_seven_days(self):
+        from datetime import datetime, timedelta, timezone
+        from app.digest import weekly_digest_due
+
+        now = datetime(2026, 8, 8, tzinfo=timezone.utc)
+        last = now - timedelta(days=8)
+        anchor = now - timedelta(days=30)
+        self.assertTrue(
+            weekly_digest_due(
+                now=now,
+                account_anchor=anchor,
+                last_digest_sent=last,
+                interval_days=7,
+            )
+        )
+        self.assertFalse(
+            weekly_digest_due(
+                now=now,
+                account_anchor=anchor,
+                last_digest_sent=now - timedelta(days=2),
+                interval_days=7,
+            )
+        )
+
+    def test_path_needs_refresh_when_missing_or_stale(self):
+        from datetime import datetime, timedelta, timezone
+        from app.digest import path_needs_refresh
+
+        now = datetime(2026, 8, 8, tzinfo=timezone.utc)
+        self.assertTrue(
+            path_needs_refresh(
+                recommendation=None,
+                refresh_recommended=False,
+                last_digest_sent=None,
+            )
+        )
+        self.assertTrue(
+            path_needs_refresh(
+                recommendation={"created_at": (now - timedelta(days=2)).isoformat(), "expires_at": (now - timedelta(hours=1)).isoformat()},
+                refresh_recommended=False,
+                last_digest_sent=None,
+            )
+        )
+        self.assertTrue(
+            path_needs_refresh(
+                recommendation={"created_at": (now - timedelta(days=2)).isoformat(), "expires_at": (now + timedelta(hours=5)).isoformat()},
+                refresh_recommended=True,
+                last_digest_sent=None,
+            )
+        )
+
+    def test_path_ok_when_fresh_and_signals_unchanged(self):
+        from datetime import datetime, timedelta, timezone
+        from app.digest import path_needs_refresh
+
+        now = datetime(2026, 8, 8, tzinfo=timezone.utc)
+        self.assertFalse(
+            path_needs_refresh(
+                recommendation={
+                    "created_at": (now - timedelta(days=1)).isoformat(),
+                    "expires_at": (now + timedelta(hours=12)).isoformat(),
+                },
+                refresh_recommended=False,
+                last_digest_sent=now - timedelta(days=8),
+            )
+        )
+
     def test_langgraph_evaluate_imports_correct_stage(self):
         from app.langgraph_agent import _import_stages
         from app.recommendations import _stage_evaluate

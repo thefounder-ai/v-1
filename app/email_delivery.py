@@ -86,6 +86,7 @@ async def _delivery_log(
         "recipient_email": recipient_email,
         "status": status,
         "provider": "resend",
+        "delivery_kind": "manual",
         "error_message": error_message,
         "provider_message_id": provider_message_id,
     }

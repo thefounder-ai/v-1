@@ -37,3 +37,7 @@ services:
         sync: false
       - key: APP_PUBLIC_URL
         sync: false
+      - key: CRON_SECRET
+        sync: false
+      - key: DIGEST_INTERVAL_DAYS
+        value: "7"

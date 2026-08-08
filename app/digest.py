@@ -6,12 +6,17 @@ from typing import Any
 
 import httpx
 
+from app.auth import get_profile
 from app.config import settings
 from app.email_delivery import recommendation_email_html
+from app.interest import InterestProfileError, get_interest_profile, refresh_interest_profile
 from app.observability import event_logger, log_event
+from app.recommendations import RecommendationError, generate_recommendation
+from app.triggers import is_recommendation_fresh
 
 logger = event_logger("skillorbit.digest")
-DIGEST_TIMEOUT = httpx.Timeout(30.0, connect=5.0)
+DIGEST_TIMEOUT = httpx.Timeout(60.0, connect=5.0)
+WEEKLY_DIGEST_KIND = "weekly_digest"
 
 
 class DigestError(RuntimeError):
@@ -29,6 +34,13 @@ def _service_headers() -> dict[str, str]:
     }
 
 
+def _service_token() -> str:
+    token = settings.supabase_service_role_key
+    if not token:
+        raise DigestError("Service role key is not configured.")
+    return token
+
+
 def _resend_headers() -> dict[str, str]:
     if not settings.resend_api_key:
         raise DigestError("Resend is not configured.")
@@ -38,50 +50,50 @@ def _resend_headers() -> dict[str, str]:
     }
 
 
-async def _recent_active_user_ids(since: datetime) -> list[str]:
+def _parse_timestamp(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def weekly_digest_due(
+    *,
+    now: datetime,
+    account_anchor: datetime,
+    last_digest_sent: datetime | None,
+    interval_days: int,
+) -> bool:
+    """First digest after interval_days from onboarding; then every interval_days."""
+    if last_digest_sent:
+        return now - last_digest_sent >= timedelta(days=interval_days)
+    return now - account_anchor >= timedelta(days=interval_days)
+
+
+async def _onboarded_digest_candidates() -> list[dict[str, Any]]:
+    """All learners who finished onboarding (path not required)."""
     async with httpx.AsyncClient(timeout=DIGEST_TIMEOUT) as client:
         response = await client.get(
-            f"{settings.supabase_url}/rest/v1/activity_events",
+            f"{settings.supabase_url}/rest/v1/profiles",
             headers=_service_headers(),
             params={
-                "select": "user_id",
-                "occurred_at": f"gte.{since.isoformat()}",
-                "order": "occurred_at.desc",
+                "select": "user_id,career_goal,weekly_minutes,updated_at,created_at",
+                "onboarding_complete": "eq.true",
                 "limit": "500",
             },
         )
     if response.is_error:
-        raise DigestError("Could not load recent activity.")
+        raise DigestError("Could not load learner profiles.")
     rows = response.json()
-    if not isinstance(rows, list):
-        return []
-    seen: set[str] = set()
-    user_ids: list[str] = []
-    for row in rows:
-        user_id = row.get("user_id")
-        if user_id and user_id not in seen:
-            seen.add(user_id)
-            user_ids.append(user_id)
-    return user_ids
+    return rows if isinstance(rows, list) else []
 
 
 async def _profile_email(user_id: str) -> tuple[str, str] | None:
-    async with httpx.AsyncClient(timeout=DIGEST_TIMEOUT) as client:
-        profile_response = await client.get(
-            f"{settings.supabase_url}/rest/v1/profiles",
-            headers=_service_headers(),
-            params={
-                "select": "user_id,career_goal,onboarding_complete",
-                "user_id": f"eq.{user_id}",
-                "limit": "1",
-            },
-        )
-    if profile_response.is_error:
-        return None
-    profiles = profile_response.json()
-    if not profiles or not profiles[0].get("onboarding_complete"):
-        return None
-
     async with httpx.AsyncClient(timeout=DIGEST_TIMEOUT) as client:
         user_response = await client.get(
             f"{settings.supabase_url}/auth/v1/admin/users/{user_id}",
@@ -93,9 +105,17 @@ async def _profile_email(user_id: str) -> tuple[str, str] | None:
     email = user.get("email")
     if not email:
         return None
-    goal = profiles[0].get("career_goal") or ""
+    profile = await get_profile(_service_token(), user_id)
+    goal = (profile or {}).get("career_goal") or ""
     name = goal if goal else email.split("@", 1)[0]
     return email, name
+
+
+def _learner_from_profile(profile: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "career_goal": profile.get("career_goal"),
+        "weekly_minutes": profile.get("weekly_minutes"),
+    }
 
 
 async def _latest_recommendation(user_id: str) -> dict[str, Any] | None:
@@ -104,7 +124,7 @@ async def _latest_recommendation(user_id: str) -> dict[str, Any] | None:
             f"{settings.supabase_url}/rest/v1/recommendations",
             headers=_service_headers(),
             params={
-                "select": "id,summary,next_step,model,trigger_event_count,status,created_at",
+                "select": "id,summary,next_step,model,trigger_event_count,status,created_at,expires_at",
                 "user_id": f"eq.{user_id}",
                 "status": "eq.active",
                 "order": "created_at.desc",
@@ -117,6 +137,8 @@ async def _latest_recommendation(user_id: str) -> dict[str, Any] | None:
     if not rows:
         return None
     recommendation = rows[0]
+    if not is_recommendation_fresh(recommendation):
+        return None
     async with httpx.AsyncClient(timeout=DIGEST_TIMEOUT) as client:
         items_response = await client.get(
             f"{settings.supabase_url}/rest/v1/recommendation_items",
@@ -158,24 +180,85 @@ async def _latest_recommendation(user_id: str) -> dict[str, Any] | None:
     return recommendation
 
 
-async def _digest_sent_today(user_id: str) -> bool:
-    start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+def path_needs_refresh(
+    *,
+    recommendation: dict[str, Any] | None,
+    refresh_recommended: bool,
+    last_digest_sent: datetime | None,
+) -> bool:
+    """True when email day should trigger a new LangGraph path before sending."""
+    if not recommendation:
+        return True
+    if not is_recommendation_fresh(recommendation):
+        return True
+    if refresh_recommended:
+        return True
+    created = _parse_timestamp(recommendation.get("created_at"))
+    if last_digest_sent and created and created <= last_digest_sent:
+        return True
+    return False
+
+
+async def _ensure_latest_recommendation_for_digest(
+    user_id: str,
+    profile: dict[str, Any],
+    *,
+    last_digest_sent: datetime | None,
+) -> tuple[dict[str, Any], bool]:
+    """On email day: reuse a fresh path or auto-generate the latest one."""
+    token = _service_token()
+    learner = _learner_from_profile(profile)
+    existing = await _latest_recommendation(user_id)
+    refresh_recommended = False
+    try:
+        await refresh_interest_profile(token, user_id, profile)
+        interest = await get_interest_profile(token, user_id)
+        refresh_recommended = bool(interest and interest.get("refresh_recommended"))
+    except InterestProfileError:
+        log_event(logger, logging.INFO, "digest_profile_refresh_skipped", user_id=user_id)
+
+    if existing and not path_needs_refresh(
+        recommendation=existing,
+        refresh_recommended=refresh_recommended,
+        last_digest_sent=last_digest_sent,
+    ):
+        log_event(logger, logging.INFO, "digest_using_existing_path", user_id=user_id)
+        return existing, False
+
+    reason = "no_active_path" if not existing else "path_not_latest"
+    log_event(logger, logging.INFO, "digest_generating_path", user_id=user_id, reason=reason)
+
+    try:
+        await generate_recommendation(token, user_id, learner)
+    except RecommendationError as error:
+        raise DigestError(str(error)) from error
+
+    recommendation = await _latest_recommendation(user_id)
+    if not recommendation:
+        raise DigestError("A learning path could not be prepared for the weekly digest.")
+    return recommendation, True
+
+
+async def _last_weekly_digest_sent(user_id: str) -> datetime | None:
     async with httpx.AsyncClient(timeout=DIGEST_TIMEOUT) as client:
         response = await client.get(
             f"{settings.supabase_url}/rest/v1/email_deliveries",
             headers=_service_headers(),
             params={
-                "select": "id",
+                "select": "sent_at",
                 "user_id": f"eq.{user_id}",
                 "status": "eq.sent",
-                "sent_at": f"gte.{start.isoformat()}",
+                "delivery_kind": f"eq.{WEEKLY_DIGEST_KIND}",
+                "order": "sent_at.desc",
                 "limit": "1",
             },
         )
     if response.is_error:
-        return False
+        return None
     rows = response.json()
-    return bool(rows)
+    if not rows:
+        return None
+    return _parse_timestamp(rows[0].get("sent_at"))
 
 
 async def _send_digest_email(
@@ -190,6 +273,7 @@ async def _send_digest_email(
         "recipient_email": recipient_email,
         "status": "pending",
         "provider": "resend",
+        "delivery_kind": WEEKLY_DIGEST_KIND,
     }
     async with httpx.AsyncClient(timeout=DIGEST_TIMEOUT) as client:
         pending = await client.post(
@@ -206,7 +290,7 @@ async def _send_digest_email(
     payload = {
         "from": settings.resend_from_email,
         "to": [recipient_email],
-        "subject": "Your weekly learning digest from SkillOrbit",
+        "subject": "Your weekly learning path from SkillOrbit",
         "html": recommendation_email_html(recommendation, recipient_name),
     }
     async with httpx.AsyncClient(timeout=DIGEST_TIMEOUT) as client:
@@ -231,41 +315,80 @@ async def _send_digest_email(
                 params={"id": f"eq.{delivery_id}"},
                 json=update_payload,
             )
+    if status != "sent":
+        raise DigestError("Resend could not deliver the weekly digest.")
 
 
 async def run_weekly_digest() -> dict[str, int]:
-    """Send at most one digest email per user per day when they have activity + an active path."""
-    if not settings.resend_configured or not settings.supabase_service_role_key:
+    """Weekly proactive email: auto-generate latest path if needed, then send."""
+    if not settings.digest_configured:
         log_event(logger, logging.INFO, "digest_skipped", reason="not_configured")
-        return {"sent": 0, "skipped": 0, "failed": 0}
+        return {"sent": 0, "skipped": 0, "failed": 0, "due": 0, "generated": 0}
 
-    since = datetime.now(timezone.utc) - timedelta(days=7)
-    sent = skipped = failed = 0
+    now = datetime.now(timezone.utc)
+    interval_days = max(1, settings.digest_interval_days)
+    sent = skipped = failed = due = generated = 0
     try:
-        user_ids = await _recent_active_user_ids(since)
+        candidates = await _onboarded_digest_candidates()
     except DigestError as error:
         log_event(logger, logging.WARNING, "digest_failed", error=str(error))
-        return {"sent": 0, "skipped": 0, "failed": 0}
+        return {"sent": 0, "skipped": 0, "failed": 0, "due": 0, "generated": 0}
 
-    for user_id in user_ids:
+    for profile in candidates:
+        user_id = profile.get("user_id")
+        if not user_id:
+            skipped += 1
+            continue
+        account_anchor = _parse_timestamp(profile.get("updated_at")) or _parse_timestamp(profile.get("created_at"))
+        if not account_anchor:
+            skipped += 1
+            continue
         try:
-            if await _digest_sent_today(user_id):
+            last_sent = await _last_weekly_digest_sent(user_id)
+            if not weekly_digest_due(
+                now=now,
+                account_anchor=account_anchor,
+                last_digest_sent=last_sent,
+                interval_days=interval_days,
+            ):
                 skipped += 1
                 continue
+            due += 1
             identity = await _profile_email(user_id)
             if not identity:
                 skipped += 1
                 continue
             email, name = identity
-            recommendation = await _latest_recommendation(user_id)
-            if not recommendation:
-                skipped += 1
-                continue
+            recommendation, was_generated = await _ensure_latest_recommendation_for_digest(
+                user_id,
+                profile,
+                last_digest_sent=last_sent,
+            )
+            if was_generated:
+                generated += 1
             await _send_digest_email(user_id, email, name, recommendation)
             sent += 1
-        except (DigestError, httpx.HTTPError) as error:
+            log_event(
+                logger,
+                logging.INFO,
+                "weekly_digest_sent",
+                user_id=user_id,
+                recipient=email,
+                recommendation_id=recommendation.get("id"),
+            )
+        except (DigestError, RecommendationError, httpx.HTTPError) as error:
             failed += 1
             log_event(logger, logging.WARNING, "digest_user_failed", user_id=user_id, error=str(error))
 
-    log_event(logger, logging.INFO, "digest_finished", sent=sent, skipped=skipped, failed=failed)
-    return {"sent": sent, "skipped": skipped, "failed": failed}
+    log_event(
+        logger,
+        logging.INFO,
+        "digest_finished",
+        sent=sent,
+        skipped=skipped,
+        failed=failed,
+        due=due,
+        generated=generated,
+        interval_days=interval_days,
+    )
+    return {"sent": sent, "skipped": skipped, "failed": failed, "due": due, "generated": generated}

@@ -68,6 +68,7 @@ from app.vector_sync import (
 )
 from app.triggers import should_auto_generate, within_cooldown, is_recommendation_fresh
 from app.scheduler import shutdown_scheduler, start_scheduler
+from app.digest import DigestError, run_weekly_digest
 
 load_dotenv()
 configure_logging()
@@ -128,7 +129,46 @@ async def health_check() -> dict[str, str]:
         "supabase": "configured" if settings.supabase_configured else "missing",
         "vector": "configured" if settings.vector_configured else "missing",
         "mesh": "configured" if settings.mesh_configured else "missing",
+        "digest": "configured" if settings.digest_configured else "missing",
     }
+
+
+def _verify_cron_secret(request: Request) -> None:
+    if not settings.cron_secret:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="CRON_SECRET is not configured on the server.",
+        )
+    provided = request.headers.get("x-cron-secret") or request.query_params.get("secret", "")
+    if provided != settings.cron_secret:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid cron secret.",
+        )
+
+
+@app.post("/api/cron/weekly-digest", tags=["system"])
+async def cron_weekly_digest(request: Request) -> dict[str, int]:
+    """Trigger weekly digest delivery (for cron-job.org / external scheduler)."""
+    _verify_cron_secret(request)
+    if not settings.digest_configured:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Weekly digest is not configured (Resend + service role key).",
+        )
+    try:
+        return await run_weekly_digest()
+    except DigestError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(error),
+        ) from error
+
+
+@app.get("/api/cron/weekly-digest", tags=["system"])
+async def cron_weekly_digest_get(request: Request) -> dict[str, int]:
+    """GET alias so simple uptime/cron monitors can trigger the weekly digest check."""
+    return await cron_weekly_digest(request)
 
 
 @app.get("/favicon.ico", include_in_schema=False)

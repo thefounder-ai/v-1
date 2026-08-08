@@ -62,10 +62,13 @@ Change behavior (search a different topic, open new resources), refresh path, an
 
 Admin → add resource → **Index pending** → appears in explore search within seconds.
 
-### 7. Scheduled digest
+### 7. Scheduled weekly digest
 
-Mention APScheduler daily job (08:00 UTC) + Resend with `email_deliveries` duplicate protection.
-Requires `SUPABASE_SERVICE_ROLE_KEY` on the server.
+- First automatic email **7 days** after onboarding, then every 7 days.
+- If the user never clicked **Generate path**, the agent **creates the latest path automatically** before sending.
+- Works even if the user never returns to the site (needs Render awake or external cron).
+- Mention APScheduler (daily check at 09:00 IST) + `/api/cron/weekly-digest` + Resend `hello@plyndrox.app`.
+- `email_deliveries.delivery_kind = weekly_digest` prevents duplicate sends.
 
 ## Recovery paths
 

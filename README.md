@@ -59,7 +59,7 @@ flowchart LR
 - **Skill radar** — category weights on dashboard
 - **Saved library** — `/bookmarks` from real `bookmark_added` events
 - **Progress tracker** — `user_progress` + streak + weekly minutes vs goal
-- **Weekly digest** — APScheduler + Resend (`app/digest.py`, needs `SUPABASE_SERVICE_ROLE_KEY`)
+- **Weekly digest** — every 7 days via APScheduler + `/api/cron/weekly-digest` (Resend + service role key)
 - **Trace UI** — `/trace` with retrieval scores and pipeline stages
 - **Mesh observability** — trace IDs + link to [Mesh dashboard](https://developers.meshapi.ai)
 - **Live activity panel** on resource pages (real events)
@@ -72,7 +72,7 @@ Structured JSON logs include `recommendation_graph_finished` events with per-sta
 
 ## Current status
 
-- Migrations `001`–`014` (catalog ~80 resources after `014`)
+- Migrations `001`–`015` (catalog ~80 resources; `015` adds `delivery_kind` for weekly digests)
 - Public `/explore` and `/resource/{id}`; login for dashboard, bookmarks, recommendations
 - Deploy via [`render.yaml`](./render.yaml) (set `SUPABASE_SERVICE_ROLE_KEY` for digests)
 
@@ -89,12 +89,35 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 5000
 ## Supabase setup
 
 1. Enable email/password auth.
-2. Run migrations `001` through `014` in order.
+2. Run migrations `001` through `015` in order.
 3. Set `profiles.role = 'admin'` for admin accounts.
 4. Configure Qdrant + Mesh (+ optional Resend) in `.env`.
 5. `python scripts/bootstrap_qdrant.py` after seeding catalog.
 
 Demo seed: `python scripts/demo_seed.py --apply` (requires `DEMO_USER_EMAIL` + service role key).
+
+## Weekly digest (automatic email)
+
+Manual **Email me this path** is instant. The **weekly digest** runs without the user opening the site:
+
+1. User finished onboarding (path **not** required beforehand).
+2. **7 days** after onboarding (then every 7 days), on that send day SkillOrbit:
+   - runs a **daily check** (scheduler + optional cron URL),
+   - refreshes learner signals,
+   - **only if the path is not latest** (missing, expired, or behavior changed), auto-generates a new AI path,
+   - emails the result from `hello@plyndrox.app`.
+3. APScheduler checks daily at **09:00 IST** (03:30 UTC).
+4. For Render free tier, also schedule an external cron hit:
+
+```text
+GET https://YOUR-APP.onrender.com/api/cron/weekly-digest?secret=YOUR_CRON_SECRET
+```
+
+Use [cron-job.org](https://cron-job.org) once per day (e.g. 09:05 IST). Use [UptimeRobot](https://uptimerobot.com) every 5 minutes on `/health` to reduce cold starts.
+
+Render env vars: `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, optional `DIGEST_INTERVAL_DAYS=7`.
+
+Run Supabase migration `015_email_delivery_kind.sql` before enabling weekly digests.
 
 ## Product principles
 

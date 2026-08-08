@@ -22,6 +22,8 @@ class Settings:
     resend_api_key: str = os.getenv("RESEND_API_KEY", "")
     resend_from_email: str = os.getenv("RESEND_FROM_EMAIL", "SkillOrbit <onboarding@resend.dev>")
     app_public_url: str = os.getenv("APP_PUBLIC_URL", "http://localhost:5000")
+    cron_secret: str = os.getenv("CRON_SECRET", "")
+    digest_interval_days: int = int(os.getenv("DIGEST_INTERVAL_DAYS", "7"))
 
     @property
     def supabase_service_role_key(self) -> str:
@@ -42,6 +44,14 @@ class Settings:
     @property
     def resend_configured(self) -> bool:
         return bool(self.resend_api_key and self.resend_from_email)
+
+    @property
+    def digest_configured(self) -> bool:
+        return self.resend_configured and bool(self.supabase_service_role_key)
+
+    @property
+    def cron_configured(self) -> bool:
+        return bool(self.cron_secret)
 
 
 settings = Settings()
