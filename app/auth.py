@@ -230,11 +230,19 @@ async def _ensure_profile(access_token: str, user_id: str) -> None:
             raise
 
 
-async def current_user_context(request: Request) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+async def resolve_user_context(
+    request: Request,
+) -> tuple[str | None, dict[str, Any] | None, dict[str, Any] | None]:
+    """Return access token, user, and profile in a single session resolution."""
     access_token, user = await resolve_access_token(request)
     if not user or not access_token:
-        return None, None
-    return user, await get_profile(access_token, user["id"])
+        return None, None, None
+    return access_token, user, await get_profile(access_token, user["id"])
+
+
+async def current_user_context(request: Request) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    _, user, profile = await resolve_user_context(request)
+    return user, profile
 
 
 async def current_user(request: Request) -> dict[str, Any] | None:

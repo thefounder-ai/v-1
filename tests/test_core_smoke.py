@@ -375,8 +375,15 @@ class CoreSmokeTests(unittest.TestCase):
             loader=FileSystemLoader(Path(__file__).resolve().parents[1] / "app" / "templates"),
             autoescape=True,
         )
+        templates.filters["interest_labels"] = lambda value: (
+            [str(item) for item in value[:4] if item]
+            if isinstance(value, list)
+            else [value.strip()]
+            if isinstance(value, str) and value.strip()
+            else []
+        )
         source = (Path(__file__).resolve().parents[1] / "app" / "templates" / "dashboard.html").read_text()
-        self.assertIn("recommendation['items']", source)
+        self.assertIn("recommendation.get('items')", source)
         rendered = templates.get_template("dashboard.html").render(
             request=None,
             page_title="Dashboard",
@@ -416,6 +423,13 @@ class CoreSmokeTests(unittest.TestCase):
             recommendation_history=[],
             resend_configured=False,
             career_goals=CAREER_GOALS,
+            path_intelligence={
+                "path_health": {"score": 60, "label": "Healthy", "factors": []},
+                "generic_baseline": {"items": [], "source": "deferred"},
+                "personalized_items": [],
+                "overlap_count": 0,
+                "interest_drift": {"baseline_label": "", "categories": [], "max_weight": 1.0},
+            },
         )
         self.assertIn("Python Tutorial", rendered)
 

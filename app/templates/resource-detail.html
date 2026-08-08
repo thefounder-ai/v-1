@@ -120,10 +120,10 @@ document.addEventListener("DOMContentLoaded", function () {
   const productId = {{ product.id|tojson }};
 
   const bookmarkBtn = document.getElementById("bookmark-btn");
-  if (bookmarkBtn) {
+  if (bookmarkBtn && ui) {
     bookmarkBtn.addEventListener("click", function () {
       if (!window.skillOrbitTrack) {
-        if (ui) ui.showToast("Sign in to save resources.", "error");
+        ui.showToast("Sign in to save resources.", "error");
         return;
       }
       ui.setButtonLoading(bookmarkBtn, true, "Saving…");
@@ -134,11 +134,11 @@ document.addEventListener("DOMContentLoaded", function () {
           bookmarkBtn.disabled = true;
           bookmarkBtn.classList.add("is-success");
           appendSignal("Saved", productTitle);
-          if (ui) ui.showToast(ui.toastMessage("bookmarkSaved"), "success");
+          ui.showToast(ui.toastMessage("bookmarkSaved"), "success");
         })
         .catch(function (error) {
           ui.setButtonLoading(bookmarkBtn, false);
-          if (ui) ui.showToast(error.message || "Could not save right now.", "error");
+          ui.showToast(error.message || "Could not save right now.", "error");
         });
     });
   }

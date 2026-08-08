@@ -167,6 +167,26 @@
     );
   }
 
+  function bindFeedbackButtons(root) {
+    const scope = root || document;
+    scope.querySelectorAll(".recommendation-feedback").forEach(function (feedback) {
+      if (feedback.dataset.feedbackBound === "true") return;
+      feedback.dataset.feedbackBound = "true";
+      if (!window.SkillOrbitDashboard || !window.SkillOrbitDashboard.bindFeedback) return;
+      window.SkillOrbitDashboard.bindFeedback(feedback);
+    });
+  }
+
+  function bindEmailButtons(root) {
+    const scope = root || document;
+    scope.querySelectorAll(".recommendation-email").forEach(function (emailBox) {
+      if (emailBox.dataset.emailBound === "true") return;
+      emailBox.dataset.emailBound = "true";
+      if (!window.SkillOrbitDashboard || !window.SkillOrbitDashboard.bindEmail) return;
+      window.SkillOrbitDashboard.bindEmail(emailBox);
+    });
+  }
+
   function bindCopyButtons(root) {
     const scope = root || document;
     scope.querySelectorAll("[data-copy-target]").forEach(function (button) {
@@ -379,10 +399,8 @@
       genBtn.textContent = "Refresh path";
       genBtn.dataset.force = "true";
     }
-    if (window.SkillOrbitDashboard && window.SkillOrbitDashboard.bindFeedback) {
-      window.SkillOrbitDashboard.bindFeedback();
-      window.SkillOrbitDashboard.bindEmail();
-    }
+    bindFeedbackButtons(body);
+    bindEmailButtons(body);
     bindCopyButtons(body);
     renderChangeInsight(data);
     renderPathIntelligence(data);
@@ -460,6 +478,8 @@
     startAiLoader: startAiLoader,
     bindFormSubmitLoading: bindFormSubmitLoading,
     formatPipelineTimingBadge: formatPipelineTimingBadge,
+    bindFeedbackButtons: bindFeedbackButtons,
+    bindEmailButtons: bindEmailButtons,
     bindCopyButtons: bindCopyButtons,
     renderCausalityTimelineHtml: renderCausalityTimelineHtml,
     renderChangeInsight: renderChangeInsight,

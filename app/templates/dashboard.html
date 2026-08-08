@@ -322,10 +322,12 @@ document.addEventListener("DOMContentLoaded", function () {
   const autoBanner = document.getElementById("auto-refresh-banner");
   const autoBtn = document.getElementById("auto-refresh-btn");
 
-  function bindFeedback() {
-    const feedback = document.querySelector(".recommendation-feedback");
-    if (!feedback) return;
+  function bindFeedback(feedbackEl) {
+    const feedback = feedbackEl || document.querySelector(".recommendation-feedback");
+    if (!feedback || !ui) return;
     feedback.querySelectorAll("button").forEach(function (btn) {
+      if (btn.dataset.feedbackBound === "true") return;
+      btn.dataset.feedbackBound = "true";
       btn.addEventListener("click", async function () {
         feedback.querySelectorAll("button").forEach(function (b) { b.disabled = true; });
         try {
@@ -346,10 +348,12 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  function bindEmail() {
-    const emailBtn = document.getElementById("email-recommendation");
-    const emailBox = document.querySelector(".recommendation-email");
-    if (!emailBtn || !emailBox) return;
+  function bindEmail(emailBoxEl) {
+    const emailBox = emailBoxEl || document.querySelector(".recommendation-email");
+    if (!emailBox || !ui) return;
+    const emailBtn = emailBox.querySelector("#email-recommendation");
+    if (!emailBtn || emailBtn.dataset.emailBound === "true") return;
+    emailBtn.dataset.emailBound = "true";
     emailBtn.addEventListener("click", async function () {
       ui.setButtonLoading(emailBtn, true, "Sending…");
       try {
@@ -371,6 +375,11 @@ document.addEventListener("DOMContentLoaded", function () {
   window.SkillOrbitDashboard = { bindFeedback: bindFeedback, bindEmail: bindEmail };
   bindFeedback();
   bindEmail();
+
+  if (window.SkillOrbitUI && window.SkillOrbitUI.bindFeedbackButtons) {
+    window.SkillOrbitUI.bindFeedbackButtons(document);
+    window.SkillOrbitUI.bindEmailButtons(document);
+  }
 
   async function generatePath(force) {
     if (!ui || !genBtn) return;

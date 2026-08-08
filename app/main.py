@@ -36,6 +36,7 @@ from app.auth import (
     post_auth_destination,
     require_access_token,
     resolve_access_token,
+    resolve_user_context,
     set_session_cookies,
     sign_in,
     sign_up,
@@ -526,9 +527,12 @@ async def update_progress(
 
 @app.get("/dashboard", response_class=HTMLResponse, include_in_schema=False)
 async def dashboard_page(request: Request) -> HTMLResponse:
-    user, profile = await current_user_context(request)
+    access_token, user, profile = await resolve_user_context(request)
     if not user:
-        return RedirectResponse("/login?notice=Sign%20in%20to%20open%20your%20dashboard.")
+        return RedirectResponse(
+            "/login?notice=Sign%20in%20to%20open%20your%20dashboard.",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
     if profile and not profile.get("onboarding_complete"):
         return RedirectResponse("/onboarding", status_code=status.HTTP_303_SEE_OTHER)
     activity = []
@@ -545,7 +549,6 @@ async def dashboard_page(request: Request) -> HTMLResponse:
     learning_streak_days = 0
     weekly_minutes_logged = 0
     weekly_minutes_goal = (profile or {}).get("weekly_minutes") or 0
-    access_token, _ = await resolve_access_token(request)
     goal = (profile or {}).get("career_goal") or ""
     token = access_token or ""
 
@@ -807,7 +810,7 @@ async def events_stream(request: Request) -> StreamingResponse:
                     if not new_since_visit_announced and new_since_visit > 0:
                         yield _sse_message("visit", {"new_since_visit": new_since_visit})
                         new_since_visit_announced = True
-                except (ActivityError, InterestProfileError):
+                except (ActivityError, InterestProfileError, CatalogError):
                     yield _sse_message("heartbeat", {"ts": datetime.now(timezone.utc).isoformat()})
         finally:
             signal_bus.unsubscribe(user["id"], queue)
@@ -826,7 +829,7 @@ async def events_stream(request: Request) -> StreamingResponse:
 @app.post("/api/interest-profile/refresh", tags=["activity"])
 async def refresh_profile_endpoint(request: Request) -> dict:
     access_token, user = await _require_api_session(request)
-    _, profile = await current_user_context(request)
+    profile = await get_profile(access_token, user["id"])
     try:
         result = await refresh_interest_profile(access_token, user["id"], profile)
     except InterestProfileError as error:
@@ -845,7 +848,7 @@ async def refresh_profile_endpoint(request: Request) -> dict:
 @app.post("/api/recommendations/generate", tags=["recommendations"])
 async def generate_recommendation_endpoint(request: Request) -> dict:
     access_token, user = await _require_api_session(request)
-    _, profile = await current_user_context(request)
+    profile = await get_profile(access_token, user["id"])
     force = request.query_params.get("force") == "true"
     last_recommendation = None
     try:
@@ -906,7 +909,7 @@ async def generate_recommendation_endpoint(request: Request) -> dict:
 async def recommendation_feedback(
     recommendation_id: str,
     request: Request,
-) -> dict[str, str]:
+) -> dict[str, Any]:
     access_token, user = await _require_api_session(request)
     try:
         UUID(recommendation_id)
@@ -932,7 +935,7 @@ async def recommendation_feedback(
     feedback_influence = None
     try:
         owned = await latest_recommendation(access_token, user["id"])
-        if not owned or owned.get("id") != recommendation_id:
+        if not owned or str(owned.get("id")) != recommendation_id:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Recommendation not found.",
@@ -952,6 +955,8 @@ async def recommendation_feedback(
             recommendation_id,
             "dismissed" if feedback == "not_relevant" else "active",
         )
+    except HTTPException:
+        raise
     except (ActivityError, RecommendationError, InterestProfileError) as error:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -1040,13 +1045,13 @@ async def explore_page(
         error = "Search is temporarily unavailable. Try again or browse without search."
         products = []
     categories = sorted({product.get("category", "") for product in products if product.get("category")})
-    _, profile = await current_user_context(request)
+    user, profile = await current_user_context(request)
     return templates.TemplateResponse(
         request=request,
         name="explore.html",
         context={
             "page_title": "Explore learning resources",
-            "user": await current_user(request),
+            "user": user,
             "profile": profile,
             "products": products,
             "categories": categories,
@@ -1063,7 +1068,7 @@ async def explore_page(
 
 @app.get("/learning-path", response_class=HTMLResponse, include_in_schema=False)
 async def learning_path_page(request: Request) -> HTMLResponse:
-    user, profile = await current_user_context(request)
+    access_token, user, profile = await resolve_user_context(request)
     if not user:
         return RedirectResponse(
             "/login?notice=Sign%20in%20to%20view%20your%20learning%20path.",
@@ -1074,7 +1079,6 @@ async def learning_path_page(request: Request) -> HTMLResponse:
     path_error = None
     progress_rows: list[dict] = []
     progress_stats: dict[str, Any] = {}
-    access_token, _ = await resolve_access_token(request)
     try:
         if goal:
             path_products = await list_products_for_goal(goal)
@@ -1312,11 +1316,12 @@ async def resource_detail(request: Request, product_id: str) -> HTMLResponse:
             context={"page_title": "Resource not found"},
             status_code=status.HTTP_404_NOT_FOUND,
         )
-    user_obj = await current_user(request)
+    user_obj = None
+    profile = None
     activity: list[dict] = []
     recommendation_snippet = None
+    access_token, user_obj, profile = await resolve_user_context(request)
     if user_obj:
-        access_token, _ = await resolve_access_token(request)
         try:
             activity = await recent_events(access_token or "", user_obj["id"], limit=8)
             products_by_id = await _products_for_activity(access_token or "", activity)
@@ -1333,7 +1338,7 @@ async def resource_detail(request: Request, product_id: str) -> HTMLResponse:
         context={
             "page_title": product["title"],
             "user": user_obj,
-            "profile": (await current_user_context(request))[1],
+            "profile": profile,
             "product": product,
             "activity": activity,
             "recommendation_snippet": recommendation_snippet,

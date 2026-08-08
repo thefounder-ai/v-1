@@ -13,6 +13,9 @@
     });
   }
   let visitToastShown = false;
+  let source = null;
+  let reconnectTimer = null;
+  let reconnectAttempts = 0;
 
   function timelineIcon(eventType) {
     if (eventType === "resource_view") return "↗";
@@ -28,6 +31,7 @@
     seenFeedIds.add(row.event_id);
     const item = document.createElement("li");
     item.className = "live-signal-item";
+    item.dataset.eventId = row.event_id;
     item.innerHTML =
       '<span class="timeline-icon">' + timelineIcon(row.event_type) + "</span>" +
       "<div><strong>" + escapeHtml(row.label) + "</strong>" +
@@ -67,51 +71,84 @@
     el.classList.remove("is-expired");
   }
 
-  const lastVisit = localStorage.getItem("skillorbit_last_visit_at");
-  localStorage.setItem("skillorbit_last_visit_at", new Date().toISOString());
-  const since = lastVisit || new Date(Date.now() - 3600000).toISOString();
-  const source = new EventSource("/api/events/stream?since=" + encodeURIComponent(since));
-
-  source.addEventListener("signal", function (event) {
-    try {
-      prependLiveEvent(JSON.parse(event.data));
-    } catch (error) {
-      return;
+  function closeSource() {
+    if (reconnectTimer) {
+      window.clearTimeout(reconnectTimer);
+      reconnectTimer = null;
     }
-  });
-
-  source.addEventListener("stats", function (event) {
-    try {
-      const data = JSON.parse(event.data);
-      if (signalCountEl && typeof data.meaningful_event_count === "number") {
-        signalCountEl.textContent = String(data.meaningful_event_count);
-      }
-      if (data.refresh_recommended) {
-        window.dispatchEvent(new CustomEvent("skillorbit:refresh-recommended", { detail: data }));
-      }
-    } catch (error) {
-      return;
+    if (source) {
+      source.close();
+      source = null;
     }
-  });
+  }
 
-  source.addEventListener("visit", function (event) {
-    if (visitToastShown || !ui) return;
-    try {
-      const data = JSON.parse(event.data);
-      const count = data.new_since_visit || 0;
-      if (count > 0) {
-        ui.showToast(ui.toastMessage("newSignals", count), "info");
-        visitToastShown = true;
+  function scheduleReconnect() {
+    if (reconnectTimer) return;
+    reconnectAttempts += 1;
+    const delay = Math.min(30000, 1000 * Math.pow(2, reconnectAttempts - 1));
+    reconnectTimer = window.setTimeout(function () {
+      reconnectTimer = null;
+      connectStream();
+    }, delay);
+  }
+
+  function connectStream() {
+    closeSource();
+    const lastVisit = localStorage.getItem("skillorbit_last_visit_at");
+    localStorage.setItem("skillorbit_last_visit_at", new Date().toISOString());
+    const since = lastVisit || new Date(Date.now() - 3600000).toISOString();
+    source = new EventSource("/api/events/stream?since=" + encodeURIComponent(since));
+
+    source.addEventListener("connected", function () {
+      reconnectAttempts = 0;
+    });
+
+    source.addEventListener("signal", function (event) {
+      try {
+        prependLiveEvent(JSON.parse(event.data));
+      } catch (error) {
+        return;
       }
-    } catch (error) {
-      return;
-    }
-  });
+    });
+
+    source.addEventListener("stats", function (event) {
+      try {
+        const data = JSON.parse(event.data);
+        if (signalCountEl && typeof data.meaningful_event_count === "number") {
+          signalCountEl.textContent = String(data.meaningful_event_count);
+        }
+        if (data.refresh_recommended) {
+          window.dispatchEvent(new CustomEvent("skillorbit:refresh-recommended", { detail: data }));
+        }
+      } catch (error) {
+        return;
+      }
+    });
+
+    source.addEventListener("visit", function (event) {
+      if (visitToastShown || !ui) return;
+      try {
+        const data = JSON.parse(event.data);
+        const count = data.new_since_visit || 0;
+        if (count > 0) {
+          ui.showToast(ui.toastMessage("newSignals", count), "info");
+          visitToastShown = true;
+        }
+      } catch (error) {
+        return;
+      }
+    });
+
+    source.onerror = function () {
+      if (source && source.readyState === EventSource.CLOSED) {
+        scheduleReconnect();
+      }
+    };
+  }
 
   updateCountdown();
   window.setInterval(updateCountdown, 60000);
-  window.SkillOrbitLive = { updateCountdown: updateCountdown };
-  window.addEventListener("pagehide", function () {
-    source.close();
-  });
+  connectStream();
+  window.SkillOrbitLive = { updateCountdown: updateCountdown, reconnect: connectStream };
+  window.addEventListener("pagehide", closeSource);
 })();

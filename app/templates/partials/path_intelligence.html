@@ -32,7 +32,7 @@
       <p class="aside-label">Generic popular path</p>
       <small class="counterfactual-meta">{{ path_intelligence.generic_baseline.source|replace('_', ' ') }}</small>
       <ol class="counterfactual-list">
-        {% for item in path_intelligence.generic_baseline.items %}
+        {% for item in path_intelligence.generic_baseline.get('items', []) %}
         <li>
           <strong>{{ item.title }}</strong>
           <small>{{ item.category }}{% if item.difficulty %} · {{ item.difficulty }}{% endif %}</small>

@@ -8,6 +8,7 @@
   const batchSize = 8;
   const flushInterval = 5000;
   let flushTimer = null;
+  let flushInFlight = null;
   const resourceMatch = window.location.pathname.match(/^\/resource\/([0-9a-f-]{36})$/i);
   const resourceId = resourceMatch ? resourceMatch[1] : null;
   const startedAt = Date.now();
@@ -54,6 +55,7 @@
       flushTimer = null;
     }
     if (!queue.length) return Promise.resolve();
+    if (flushInFlight) return flushInFlight;
 
     const events = queue.splice(0, queue.length);
     const bodyData = JSON.stringify({ events: events });
@@ -64,7 +66,7 @@
       return Promise.resolve();
     }
 
-    return window.fetch("/api/events", {
+    flushInFlight = window.fetch("/api/events", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: bodyData,
@@ -81,7 +83,11 @@
         }
         return res.json();
       })
-      .then(maybePromptRefresh);
+      .then(maybePromptRefresh)
+      .finally(function () {
+        flushInFlight = null;
+      });
+    return flushInFlight;
   }
 
   window.skillOrbitTrack = enqueue;

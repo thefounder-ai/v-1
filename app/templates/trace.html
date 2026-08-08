@@ -106,7 +106,7 @@
       </section>
       {% endif %}
 
-      {% if recommendation.items %}
+      {% if recommendation.get('items') %}
       <section class="trace-items">
         <h2>Grounded path items</h2>
         <ol class="rec-items rec-items-dark">
