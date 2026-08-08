@@ -107,6 +107,7 @@
 
 {% block scripts %}
 <script>
+document.addEventListener("DOMContentLoaded", function () {
 (function () {
   const ui = window.SkillOrbitUI;
   const regenBtn = document.getElementById("regenerate");
@@ -135,5 +136,6 @@
     }
   });
 })();
+});
 </script>
 {% endblock %}

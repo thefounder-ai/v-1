@@ -149,10 +149,10 @@
 
 {% block scripts %}
 <script>
-(function () {
+document.addEventListener("DOMContentLoaded", function () {
   if (window.SkillOrbitUI && window.SkillOrbitUI.bindCopyButtons) {
     window.SkillOrbitUI.bindCopyButtons(document);
   }
-})();
+});
 </script>
 {% endblock %}

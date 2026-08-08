@@ -626,13 +626,14 @@ async def dashboard_page(request: Request) -> HTMLResponse:
             ]
             rec_progress = progress_summary(progress_rows, rec_path_ids) if rec_path_ids else progress_stats
             path_intelligence = await build_path_intelligence(
-                access_token or "",
+                token,
                 user["id"],
                 profile,
                 recommendation,
                 interest_profile,
                 rec_progress,
                 last_recommendation=previous_recommendation,
+                lightweight=True,
             )
     except Exception:
         path_intelligence = None

@@ -290,6 +290,7 @@
 
 {% block scripts %}
 <script>
+document.addEventListener("DOMContentLoaded", function () {
 (function () {
   const ui = window.SkillOrbitUI;
   const refreshBtn = document.getElementById("refresh-profile");
@@ -437,6 +438,7 @@
     window.SkillOrbitUI.bindCopyButtons(document);
   }
 })();
+});
 </script>
 <script src="/static/live.js" defer></script>
 {% endblock %}

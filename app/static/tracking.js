@@ -30,11 +30,11 @@
       occurred_at: new Date().toISOString()
     }, details || {}));
     if (eventType === "bookmark_added") {
-      flush();
-      return;
+      return flush();
     }
-    if (queue.length >= batchSize) flush();
-    else scheduleFlush();
+    if (queue.length >= batchSize) return flush();
+    scheduleFlush();
+    return Promise.resolve();
   }
 
   function scheduleFlush() {
@@ -53,38 +53,39 @@
       window.clearTimeout(flushTimer);
       flushTimer = null;
     }
-    if (!queue.length) return;
+    if (!queue.length) return Promise.resolve();
+
     const events = queue.splice(0, queue.length);
     const bodyData = JSON.stringify({ events: events });
-
-    function handleResponse(responsePromise) {
-      responsePromise
-        .then(function (res) {
-          if (!res.ok) return null;
-          return res.json();
-        })
-        .then(maybePromptRefresh)
-        .catch(function () {});
-    }
 
     if (beaconOnly && navigator.sendBeacon) {
       const blob = new Blob([bodyData], { type: "application/json" });
       navigator.sendBeacon("/api/events", blob);
-      return;
+      return Promise.resolve();
     }
 
-    handleResponse(
-      window.fetch("/api/events", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: bodyData,
-        keepalive: true,
-        credentials: "same-origin"
+    return window.fetch("/api/events", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: bodyData,
+      keepalive: true,
+      credentials: "same-origin"
+    })
+      .then(function (res) {
+        if (!res.ok) {
+          return res.json().catch(function () {
+            return { detail: "Activity could not be saved right now." };
+          }).then(function (data) {
+            throw new Error((data && data.detail) || "Activity could not be saved right now.");
+          });
+        }
+        return res.json();
       })
-    );
+      .then(maybePromptRefresh);
   }
 
   window.skillOrbitTrack = enqueue;
+  window.skillOrbitFlush = flush;
 
   enqueue("page_view", {
     metadata: { path: window.location.pathname }

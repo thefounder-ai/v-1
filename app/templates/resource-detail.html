@@ -113,20 +113,33 @@
 
 {% block scripts %}
 <script>
+document.addEventListener("DOMContentLoaded", function () {
 (function () {
   const ui = window.SkillOrbitUI;
   const productTitle = {{ product.title|tojson }};
   const productId = {{ product.id|tojson }};
 
   const bookmarkBtn = document.getElementById("bookmark-btn");
-  if (bookmarkBtn && window.skillOrbitTrack) {
+  if (bookmarkBtn) {
     bookmarkBtn.addEventListener("click", function () {
-      window.skillOrbitTrack("bookmark_added", { resource_id: bookmarkBtn.dataset.resourceId });
-      bookmarkBtn.textContent = "★ Saved";
-      bookmarkBtn.disabled = true;
-      bookmarkBtn.classList.add("is-success");
-      appendSignal("Saved", productTitle);
-      if (ui) ui.showToast(ui.toastMessage("bookmarkSaved"), "success");
+      if (!window.skillOrbitTrack) {
+        if (ui) ui.showToast("Sign in to save resources.", "error");
+        return;
+      }
+      ui.setButtonLoading(bookmarkBtn, true, "Saving…");
+      Promise.resolve(window.skillOrbitTrack("bookmark_added", { resource_id: bookmarkBtn.dataset.resourceId }))
+        .then(function () {
+          bookmarkBtn.classList.remove("is-loading");
+          bookmarkBtn.textContent = "★ Saved";
+          bookmarkBtn.disabled = true;
+          bookmarkBtn.classList.add("is-success");
+          appendSignal("Saved", productTitle);
+          if (ui) ui.showToast(ui.toastMessage("bookmarkSaved"), "success");
+        })
+        .catch(function (error) {
+          ui.setButtonLoading(bookmarkBtn, false);
+          if (ui) ui.showToast(error.message || "Could not save right now.", "error");
+        });
     });
   }
 
@@ -212,5 +225,6 @@
     appendSignal("Viewed", productTitle);
   }
 })();
+});
 </script>
 {% endblock %}

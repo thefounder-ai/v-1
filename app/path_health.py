@@ -169,12 +169,28 @@ async def build_path_intelligence(
     progress_stats: dict[str, Any] | None,
     *,
     last_recommendation: dict[str, Any] | None = None,
+    lightweight: bool = False,
 ) -> dict[str, Any]:
     """Bundle counterfactual, health score, and drift for dashboard/API clients."""
+    personalized_items = list((recommendation or {}).get("items") or [])
+    path_health = compute_path_health(recommendation, interest_profile, progress_stats)
+    if lightweight:
+        return {
+            "generic_baseline": {"items": [], "source": "deferred"},
+            "personalized_items": personalized_items,
+            "overlap_count": 0,
+            "path_health": path_health,
+            "interest_drift": {
+                "baseline_label": "",
+                "categories": [],
+                "max_weight": 1.0,
+                "has_baseline": False,
+            },
+        }
+
     from app.recommendations import generic_baseline_path
 
     generic_baseline = await generic_baseline_path(learner)
-    personalized_items = list((recommendation or {}).get("items") or [])
     overlap = {
         item.get("product_id")
         for item in personalized_items
@@ -209,6 +225,7 @@ async def recommendation_api_with_intelligence(
     interest_profile: dict[str, Any] | None = None,
     progress_stats: dict[str, Any] | None = None,
     last_recommendation: dict[str, Any] | None = None,
+    lightweight_intelligence: bool = True,
 ) -> dict[str, Any]:
     from app.progress import list_progress, progress_summary
     from app.recommendations import recommendation_api_payload
@@ -234,5 +251,6 @@ async def recommendation_api_with_intelligence(
         profile,
         stats,
         last_recommendation=last_recommendation,
+        lightweight=lightweight_intelligence,
     )
     return payload

@@ -77,6 +77,23 @@ class PathHealthAsyncTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(baseline["items"][0]["title"], "Python Basics")
         self.assertEqual(baseline["source"], "generic_retrieval")
 
+    async def test_build_path_intelligence_lightweight_skips_semantic(self):
+        from app.path_health import build_path_intelligence
+
+        with patch("app.recommendations.generic_baseline_path", new_callable=AsyncMock) as mock_baseline:
+            intel = await build_path_intelligence(
+                "token",
+                "user-1",
+                {"career_goal": "AI Engineer"},
+                {"items": [{"product_id": "p1", "title": "RAG"}]},
+                {"refresh_recommended": False},
+                {"path_percent": 10},
+                lightweight=True,
+            )
+        mock_baseline.assert_not_called()
+        self.assertEqual(intel["generic_baseline"]["source"], "deferred")
+        self.assertEqual(intel["personalized_items"][0]["product_id"], "p1")
+
 
 if __name__ == "__main__":
     unittest.main()

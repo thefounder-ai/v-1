@@ -79,6 +79,7 @@
 
 {% block scripts %}
 <script>
+document.addEventListener("DOMContentLoaded", function () {
 (function () {
   const ui = window.SkillOrbitUI;
   const form = document.querySelector(".catalog-filters");
@@ -91,5 +92,6 @@
     });
   }
 })();
+});
 </script>
 {% endblock %}
