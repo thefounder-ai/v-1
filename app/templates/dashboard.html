@@ -171,14 +171,14 @@
           {% for label, weight in interest_profile.category_weights.items() %}
           <div class="skill-radar-row">
             <span class="skill-radar-label">{{ label }}</span>
-            <div class="skill-radar-bar"><i style="width: {{ [weight * 18, 100]|min }}%"></i></div>
+            <div class="skill-radar-bar"><i style="width: {{ [(weight|float) * 18, 100]|min }}%"></i></div>
             <span class="skill-radar-value">{{ weight }}</span>
           </div>
           {% endfor %}
         </div>
         {% endif %}
         <div class="chip-row">
-          {% for item in interest_profile.interest_snapshot %}
+          {% for item in interest_profile.interest_snapshot|interest_labels %}
           <span class="chip">{{ item }}</span>
           {% endfor %}
         </div>
@@ -216,7 +216,8 @@
                 {% if event.resource_title %}{{ event.resource_title }}
                 {% elif event.search_query %}{{ event.search_query }}
                 {% elif event.resource_id %}Resource {{ event.resource_id[:8] }}…
-                {% else %}{{ event.occurred_at[:16]|replace("T", " ") }}{% endif %}
+                {% elif event.occurred_at %}{{ event.occurred_at[:16]|replace("T", " ") }}
+                {% else %}Just now{% endif %}
               </small>
             </div>
           </li>
