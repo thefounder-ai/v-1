@@ -1,177 +1,204 @@
 # SkillOrbit
 
-SkillOrbit is an AI Career Learning Navigator for the **SmartReco Build Challenge 2026**. It turns real browsing activity into a grounded, explainable next learning step.
+**Behavioral AI recommendation engine for career learning.**
 
-## Live demo & submission
+SkillOrbit observes how learners browse, search, and engage with a real course catalog — then reasons over that activity to deliver grounded, personalized learning paths with persuasive AI-generated narratives. Every recommendation is tied to actual catalog products retrieved via semantic search, not hallucinated content.
 
-| Resource | Link |
-|----------|------|
-| **Live app** | https://v-1-ora9.onrender.com |
-| **Health check** | https://v-1-ora9.onrender.com/health |
-| **Judge demo mode** | https://v-1-ora9.onrender.com/demo |
-| **Demo video** | _Add your 2–3 min Loom/YouTube link here after recording_ |
-| **Demo walkthrough** | [`DEMO_RUNBOOK.md`](./DEMO_RUNBOOK.md) |
+Built for the [SmartReco Build Challenge 2026](https://career.krishnaik.in/dashboard/hackathons?h=smartreco-build-challenge-2026).
 
-**Demo account:** Sign up with any email, choose **AI Engineer** during onboarding, then use **Admin → Seed demo activity** (or `python scripts/demo_seed.py --apply` with `DEMO_USER_EMAIL`). For judges: open `/demo` → **Auto-run demo** when signed in as admin.
+---
 
-**Pre-submit verify:**
+## Live
 
-```bash
-python scripts/competition_verify.py        # full: tests + judge audit + live smoke
-python scripts/competition_verify.py --ci   # CI-safe (no live HTTP)
-python scripts/local_e2e.py               # authenticated E2E (uvicorn on :5000)
+| | |
+|---|---|
+| **Application** | https://v-1-ora9.onrender.com |
+| **Judge demo** | https://v-1-ora9.onrender.com/demo |
+| **Health** | https://v-1-ora9.onrender.com/health |
+
+Open `/demo` for a guided walkthrough with auto-run. Sign up with any email, choose **AI Engineer** during onboarding, then generate a path from the dashboard.
+
+---
+
+## How it works
+
+```mermaid
+flowchart LR
+  Browser["Browser activity"] --> Events["Batched events"]
+  Events --> DB[(Supabase)]
+  Events --> Profile["Interest profile"]
+  Profile --> Agent["LangGraph agent"]
+  Agent --> Qdrant[(Qdrant)]
+  Agent --> Mesh["Mesh API"]
+  Mesh --> Rec["Stored recommendation"]
+  Rec --> UI["Dashboard / trace / share"]
+  Admin["Admin CRUD"] --> DB
+  Admin --> Qdrant
 ```
 
-## SmartReco submission checklist
+1. **Track** — Frontend captures page views, searches, clicks, dwell time, and bookmarks. Events are batched and flushed asynchronously so the UI never blocks.
+2. **Profile** — Backend aggregates activity into a weighted interest profile with category signals and a refresh trigger when behavior shifts.
+3. **Retrieve** — A LangGraph pipeline builds a semantic query from the profile, searches Qdrant, and evaluates candidate relevance before any LLM call.
+4. **Generate** — Mesh API writes a short narrative and next-step recommendation grounded strictly in retrieved catalog items.
+5. **Deliver** — Results are stored, shown on the dashboard, shareable at `/path/{id}`, traceable at `/trace`, and optionally emailed via weekly digest.
+
+**Agent pipeline:** `analyze → retrieve → evaluate → moderate → generate → validate → persist`
+
+---
+
+## Challenge requirements
 
 | Requirement | Implementation |
 |---|---|
 | FastAPI + Jinja2 | `app/main.py`, `app/templates/` |
-| Mesh API for all LLM/embeddings | `app/vector_sync.py`, `app/recommendations.py` |
-| Recommendation system | Qdrant RAG + interest profile + stored paths |
-| Vector DB (queried) | Qdrant semantic search on `/explore` |
-| Dual-write catalog | Supabase `products` + Qdrant upsert on admin CRUD |
-| Behavioral tracking | Batched `app/static/tracking.js` → `/api/events` |
-| Official CI | `.github/workflows/smartreco-checks.yml` |
-| LangGraph agent | `app/langgraph_agent.py` orchestrates the pipeline |
+| Email/password auth (user + admin) | Supabase Auth + `profiles.role` |
+| Product catalog + admin CRUD | Admin UI with full create/edit/delete |
+| Dual-write (SQL + vector DB) | Supabase `products` + Qdrant upsert on every admin change |
+| Behavioral event tracking | `app/static/tracking.js` → `POST /api/events` (batched, non-blocking) |
+| Agentic recommendation engine | `app/langgraph_agent.py` — RAG + personalized narrative |
+| Mesh API (all LLM/embeddings) | `app/recommendations.py`, `app/vector_sync.py` |
+| Efficient AI triggering | `app/triggers.py` — cooldown, TTL, behavior-change gates |
+| CI workflow | `.github/workflows/smartreco-checks.yml` |
 
-### GitHub secrets (required)
+**Bonus features:** LangGraph orchestration · APScheduler weekly digest · `/trace` observability with Mesh trace IDs · recommendation diff on behavior change · retrieval score evaluation
 
-In **Settings → Secrets and variables → Actions**, add:
+---
 
-- `MESH_API_KEY` — your Mesh API key (`rsk_...`)
-- `SUBMISSION_TOKEN` — from the Krishnaik hackathon dashboard
+## Tech stack
 
-Push to `main` and confirm the **SmartReco Checks** workflow passes.
+| Layer | Choice |
+|---|---|
+| Backend | FastAPI, Python 3.11 |
+| Frontend | Jinja2 templates, vanilla JavaScript |
+| Database | Supabase (PostgreSQL) |
+| Vector DB | Qdrant |
+| LLM / embeddings | Mesh API (OpenAI-compatible gateway) |
+| Agent framework | LangGraph |
+| Scheduling | APScheduler |
+| Email | Resend |
+| Deployment | Render |
 
-### Judge demo (60 seconds)
+---
 
-Open **`/demo`** for guided judge mode with auto-run, or follow manually:
+## Getting started
 
-1. `/explore` → search **production RAG** (public catalog)
-2. Sign up → pick **AI Engineer** goal
-3. Open resources, bookmark one, mark complete
-4. **Dashboard** → interest radar + streak + weekly minutes
-5. Generate path → **Share path** (`/path/{id}`) + **Trace** page + evidence panel
-6. Change behavior → **Refresh path** → show **What changed** diff
-7. Admin → **Seed demo activity** or add resource → index vectors → appears in search
+### Prerequisites
 
-Full script: **`/demo`**, `python scripts/demo_seed.py`, and [`DEMO_RUNBOOK.md`](./DEMO_RUNBOOK.md).
+- Python 3.11+
+- Supabase project with email/password auth enabled
+- Qdrant cluster
+- Mesh API key (`rsk_...`)
+
+### Setup
+
+```bash
+git clone https://github.com/thefounder-ai/v-1.git
+cd v-1
+python -m venv .venv
+.venv\Scripts\activate        # Windows
+pip install -r requirements.txt
+copy .env.example .env        # fill in your keys
+```
+
+Run Supabase migrations `001` through `016` in order, then start the server:
+
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 5000
+```
+
+Index the catalog into Qdrant:
+
+```bash
+python scripts/bootstrap_qdrant.py
+```
+
+Set `profiles.role = 'admin'` in Supabase for admin access.
+
+### Verify
+
+```bash
+python scripts/competition_verify.py --ci
+```
+
+---
 
 ## Project structure
 
 ```
-app/                  # FastAPI backend, LangGraph agent, Jinja2 templates
-  langgraph_agent.py  # analyze → retrieve → evaluate → generate → persist
-  static/tracking.js  # batched, non-blocking behavioral event capture
-  templates/          # server-rendered UI (dashboard, explore, trace, admin)
+app/
+  main.py              # Routes and request handlers
+  langgraph_agent.py   # Agent orchestration (LangGraph)
+  recommendations.py   # RAG retrieval, narrative generation, persistence
+  vector_sync.py       # Dual-write: SQL catalog → Qdrant vectors
+  activity.py          # Event ingestion and storage
+  interest.py          # Behavioral interest profiling
+  triggers.py          # AI call gating (cooldown, TTL, refresh policy)
+  static/tracking.js   # Non-blocking frontend event capture
+  templates/           # Server-rendered UI
 scripts/
-  competition_verify.py   # submission self-check (tests + judge audit)
-  bootstrap_qdrant.py     # dual-write vector index sync
-  demo_seed.py              # judge demo activity seeder
-  local_e2e.py              # authenticated local smoke test
-supabase/migrations/  # schema + catalog seed (001–016)
-tests/                  # unit tests (run via competition_verify)
-.github/workflows/      # SmartReco Checks + quality CI
+  competition_verify.py   # Submission self-check
+  bootstrap_qdrant.py     # Vector index sync
+  demo_seed.py            # Demo activity seeder
+  local_e2e.py            # Authenticated smoke test
+supabase/migrations/   # Schema + seed data (001–016)
+tests/                 # Unit tests
+.github/workflows/     # SmartReco Checks + quality CI
 ```
 
-## Architecture
+---
 
-```mermaid
-flowchart LR
-  Browser --> Events[Batched events]
-  Events --> Supabase[(Supabase)]
-  Events --> Profile[Interest profile]
-  Profile --> LangGraph[LangGraph pipeline]
-  LangGraph --> Qdrant[(Qdrant)]
-  LangGraph --> Mesh[Mesh API]
-  Mesh --> Rec[Stored recommendation]
-  Rec --> Dashboard[Dashboard UI]
-  Admin[Admin CRUD] --> Supabase
-  Admin --> Qdrant
-```
+## Demo walkthrough
 
-## Bonus features
+**60 seconds for judges:**
 
-- **LangGraph workflow** — `analyze → retrieve → evaluate → generate → validate → persist` (`app/langgraph_agent.py`)
-- **Recommendation diff** — before/after on dashboard and `/recommendations`
-- **Skill radar** — category weights on dashboard
-- **Saved library** — `/bookmarks` from real `bookmark_added` events
-- **Progress tracker** — `user_progress` + streak + weekly minutes vs goal
-- **Weekly digest** — every 7 days via APScheduler + `/api/cron/weekly-digest` (Resend + service role key)
-- **Trace UI** — `/trace` with retrieval scores and pipeline stages
-- **Mesh observability** — trace IDs + link to [Mesh dashboard](https://developers.meshapi.ai)
-- **Judge demo mode** — `/demo` guided overlay + auto-run
-- **Shareable paths** — public `/path/{id}` + print-friendly PDF export
-- **Live activity panel** on resource pages (real events)
+1. Open `/demo` → **Auto-run demo** (seeds activity automatically).
+2. `/explore` → search `production RAG` → semantic results from Qdrant.
+3. `/dashboard` → interest radar → **Generate path**.
+4. `/trace` → LangGraph stages, retrieval scores, Mesh trace ID.
+5. **Share path** → public `/path/{id}` → **Export PDF**.
 
-## Mesh observability
+**Show behavior-driven refresh:** browse a different topic, return to dashboard, **Refresh path** → **What changed** diff appears.
 
-Every recommendation stores a `trace_id` and `retrieval_metadata` (top score, match count, mean score).
-Judges can open `/trace` for the full pipeline story or inspect token usage in the Mesh API dashboard.
-Structured JSON logs include `recommendation_graph_finished` events with per-stage timings.
+**Show dual-write (admin):** add a resource → index vectors → it appears in explore search within seconds.
 
-**Judge workflow**
+---
 
-1. Generate a path on the dashboard → copy the Mesh trace ID from the evidence panel.
-2. Open `/trace` for LangGraph stages, Qdrant candidate table, and pipeline timings.
-3. Paste the trace ID into the [Mesh dashboard](https://developers.meshapi.ai) to inspect token usage.
-4. Share `/path/{recommendation_id}` for a public, PII-free snapshot; use **Export PDF** for print.
+## Production design
 
-## Current status
+| Concern | Approach |
+|---|---|
+| Event tracking | Batched (8 events or 5 s), `sendBeacon` on page hide, immediate flush on bookmarks |
+| AI cost control | 5-minute cooldown, 24-hour recommendation TTL, regenerate only on meaningful behavior change |
+| Grounded output | Catalog IDs validated before display; LLM writes narrative from retrieved candidates only |
+| Observability | `trace_id` + `retrieval_metadata` stored per recommendation; full pipeline visible at `/trace` |
+| Proactive delivery | Weekly digest via APScheduler + optional cron endpoint; auto-generates path if stale |
+| Dual-write sync | Admin CRUD writes to Supabase and Qdrant atomically; sync health page for drift detection |
 
-- Migrations `001`–`016` (catalog ~80 resources; `015` weekly digest; `016` recommendation change explanations)
-- Public `/explore` and `/resource/{id}`; login for dashboard, bookmarks, recommendations
-- Deploy via [`render.yaml`](./render.yaml) (set `SUPABASE_SERVICE_ROLE_KEY` for digests)
+---
 
-## Run locally
+## Environment variables
 
-```bash
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-copy .env.example .env
-uvicorn app.main:app --reload --host 0.0.0.0 --port 5000
-```
+See [`.env.example`](./.env.example) for the full list. Required for core features:
 
-## Supabase setup
+| Variable | Purpose |
+|---|---|
+| `SUPABASE_URL`, `SUPABASE_ANON_KEY` | Auth and database |
+| `QDRANT_URL`, `QDRANT_API_KEY` | Semantic retrieval |
+| `MESH_API_KEY` | LLM and embeddings (mandatory) |
 
-1. Enable email/password auth.
-2. Run migrations `001` through `016` in order.
-3. Set `profiles.role = 'admin'` for admin accounts.
-4. Configure Qdrant + Mesh (+ optional Resend) in `.env`.
-5. `python scripts/bootstrap_qdrant.py` after seeding catalog.
+Optional: `RESEND_API_KEY` (email), `SUPABASE_SERVICE_ROLE_KEY` (digest cron), `CRON_SECRET` (external scheduler).
 
-Demo seed: `python scripts/demo_seed.py --apply` or Admin → **Seed demo activity** (requires `DEMO_USER_EMAIL` + service role key).
+---
 
-## Weekly digest (automatic email)
+## GitHub Actions
 
-Manual **Email me this path** is instant. The **weekly digest** runs without the user opening the site:
+Add repository secrets under **Settings → Secrets → Actions**:
 
-1. User finished onboarding (path **not** required beforehand).
-2. **7 days** after onboarding (then every 7 days), on that send day SkillOrbit:
-   - runs a **daily check** (scheduler + optional cron URL),
-   - refreshes learner signals,
-   - **only if the path is not latest** (missing, expired, or behavior changed), auto-generates a new AI path,
-   - emails the result from `hello@plyndrox.app`.
-3. APScheduler checks daily at **09:00 IST** (03:30 UTC).
-4. For Render free tier, also schedule an external cron hit:
+- `MESH_API_KEY`
+- `SUBMISSION_TOKEN`
 
-```text
-GET https://YOUR-APP.onrender.com/api/cron/weekly-digest?secret=YOUR_CRON_SECRET
-```
+Push to `main` to trigger SmartReco Checks automatically.
 
-Use [cron-job.org](https://cron-job.org) once per day (e.g. 09:05 IST). Use [UptimeRobot](https://uptimerobot.com) every 5 minutes on `/health` to reduce cold starts.
+---
 
-Render env vars: `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, optional `DIGEST_INTERVAL_DAYS=7`.
-
-Run Supabase migration `015_email_delivery_kind.sql` before enabling weekly digests.
-
-## Product principles
-
-- Recommendations are **grounded** — catalog IDs validated before display.
-- **No fake cart** — honest save/bookmark + progress instead of stub e-commerce.
-- External resources are **linked with attribution** only.
-- Tracking is **batched and non-blocking**.
-
-Built for SmartReco 2026 · Powered by Mesh API
+Built for SmartReco 2026 · Powered by [Mesh API](https://developers.meshapi.ai)

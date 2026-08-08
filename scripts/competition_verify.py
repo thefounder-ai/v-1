@@ -211,11 +211,11 @@ def check_github_workflows() -> None:
 
 def check_readme_submission_block() -> None:
     readme = _read("README.md")
-    for needle in ("v-1-ora9.onrender.com", "/demo", "DEMO_RUNBOOK"):
+    for needle in ("v-1-ora9.onrender.com", "/demo", "Demo walkthrough"):
         if needle in readme:
             ok(f"README mentions {needle}", "submission block")
         else:
-            bad(f"README mentions {needle}", "missing from README top")
+            bad(f"README mentions {needle}", "missing from README")
 
 
 async def check_live_deployment(base_url: str) -> None:
@@ -283,7 +283,7 @@ def print_footer(ci_mode: bool) -> None:
     print("Next steps:")
     print("  1. Apply migrations 001-016 in Supabase if not already done")
     print("  2. python scripts/local_e2e.py  (uvicorn on :5000, optional Mesh call)")
-    print("  3. Record 2-3 min demo video - script in DEMO_RUNBOOK.md")
+    print("  3. Confirm demo video link is on the hackathon submission dashboard")
     print("  4. Push main -> confirm SmartReco Checks green -> Render manual deploy")
     if ci_mode:
         print("  (CI mode: live checks skipped)")

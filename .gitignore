@@ -19,6 +19,7 @@ skillorbit.env
 bootstrap_output.log
 .agents/
 screenshots/
+.cursor/
 
 # Local app data and tooling
 data/
