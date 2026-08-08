@@ -8,6 +8,7 @@ Welcome to the SkillOrbit documentation. This folder contains everything you nee
 |---|---|
 | [**Setup Guide**](./SETUP.md) | Local install, Supabase, Qdrant, Mesh API, first run |
 | [**User Guide**](./USER_GUIDE.md) | Learner, admin, and judge walkthroughs |
+| [**Demo Video Script**](./DEMO_VIDEO_SCRIPT.md) | 2–3 min screen recording script (word-by-word) |
 | [**API Reference**](./API.md) | REST endpoints, events schema, auth |
 | [**Deployment**](./DEPLOYMENT.md) | Render, cron, email, production checklist |
 | [**Architecture**](../ARCHITECTURE.md) | System design, diagrams, data flows (root) |
