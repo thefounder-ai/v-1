@@ -46,7 +46,9 @@
     window.dispatchEvent(new CustomEvent("skillorbit:refresh-recommended", { detail: data }));
   }
 
-  function flush() {
+  function flush(options) {
+    options = options || {};
+    const beaconOnly = options.beaconOnly === true;
     if (flushTimer) {
       window.clearTimeout(flushTimer);
       flushTimer = null;
@@ -65,9 +67,10 @@
         .catch(function () {});
     }
 
-  if (navigator.sendBeacon) {
+    if (beaconOnly && navigator.sendBeacon) {
       const blob = new Blob([bodyData], { type: "application/json" });
       navigator.sendBeacon("/api/events", blob);
+      return;
     }
 
     handleResponse(
@@ -113,7 +116,7 @@
           resource_id: resourceId,
           duration_seconds: Math.min(86400, Math.max(0, Math.round((Date.now() - startedAt) / 1000)))
         });
-        flush();
+        flush({ beaconOnly: true });
       }
     });
   }
@@ -125,5 +128,7 @@
     if (match) enqueue("resource_click", { resource_id: match[1] });
   });
 
-  window.addEventListener("pagehide", flush);
+  window.addEventListener("pagehide", function () {
+    flush({ beaconOnly: true });
+  });
 })();

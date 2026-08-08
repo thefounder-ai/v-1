@@ -828,6 +828,12 @@ async def recommendation_feedback(
     })
     feedback_influence = None
     try:
+        owned = await latest_recommendation(access_token, user["id"])
+        if not owned or owned.get("id") != recommendation_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Recommendation not found.",
+            )
         categories = await recommendation_item_categories(access_token, recommendation_id)
         event.events[0].metadata["categories"] = categories
         feedback_influence = await apply_recommendation_feedback(

@@ -107,13 +107,6 @@
     }
   });
 
-  source.addEventListener("ingest", function () {
-    if (signalCountEl) {
-      const current = parseInt(signalCountEl.textContent || "0", 10) || 0;
-      signalCountEl.textContent = String(current + 1);
-    }
-  });
-
   updateCountdown();
   window.setInterval(updateCountdown, 60000);
   window.SkillOrbitLive = { updateCountdown: updateCountdown };
