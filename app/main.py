@@ -140,8 +140,12 @@ async def unhandled_server_error(request: Request, exc: Exception) -> JSONRespon
         )
     return templates.TemplateResponse(
         request=request,
-        name="not-found.html",
-        context={"page_title": "Temporary issue"},
+        name="error-state.html",
+        context={
+            "page_title": "Temporary issue",
+            "message": "The dashboard hit a temporary server error. Try again, or use Recommendations and Trace from the menu.",
+            "user": await current_user(request),
+        },
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
     )
 

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="simple-state container">
+  <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">S</span><span>SkillOrbit</span></a>
+  <div class="simple-state-card">
+    <p class="eyebrow"><span class="eyebrow-dot"></span> Temporary issue</p>
+    <h1>We couldn't load<br /><em>this page right now.</em></h1>
+    <p>{{ message or "Please try again in a moment. Your account and data are safe." }}</p>
+    <div class="simple-state-actions">
+      <a class="button button-primary" href="/dashboard">Try dashboard again <span aria-hidden="true">→</span></a>
+      <a class="button button-quiet" href="/explore">Explore catalog</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

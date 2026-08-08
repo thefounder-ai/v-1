@@ -153,30 +153,32 @@ async def main() -> int:
         res = await client.get("/admin/products")
         if res.status_code in {302, 303, 307}:
             ok("Admin guard", "redirects non-admin")
+        elif res.status_code == 403:
+            ok("Admin guard", "forbidden for non-admin")
         elif res.status_code == 200:
             ok("Admin products", "accessible (admin user)")
         else:
             bad("Admin guard", f"status={res.status_code}")
 
-        res = await client.get("/api/events/stream")
-        if res.status_code == 200 and "text/event-stream" in res.headers.get("content-type", ""):
-            chunk = b""
-            try:
-                async with asyncio.timeout(8):
-                    async with client.stream("GET", "/api/events/stream") as stream:
+        chunk = b""
+        try:
+            async with asyncio.timeout(8):
+                async with client.stream("GET", "/api/events/stream") as stream:
+                    if stream.status_code != 200:
+                        bad("GET /api/events/stream", f"status={stream.status_code}")
+                    elif "text/event-stream" not in (stream.headers.get("content-type") or ""):
+                        bad("GET /api/events/stream", "wrong content-type")
+                    else:
                         async for part in stream.aiter_bytes():
                             chunk += part
                             if len(chunk) > 80:
                                 break
-            except TimeoutError:
-                bad("GET /api/events/stream", "timed out before connected event")
-            else:
-                if b"connected" in chunk or b"event:" in chunk:
-                    ok("GET /api/events/stream", "SSE connected")
-                else:
-                    bad("GET /api/events/stream", f"unexpected chunk: {chunk[:80]!r}")
-        else:
-            bad("GET /api/events/stream", f"status={res.status_code}")
+                        if b"connected" in chunk or b"event:" in chunk:
+                            ok("GET /api/events/stream", "SSE connected")
+                        else:
+                            bad("GET /api/events/stream", f"unexpected chunk: {chunk[:80]!r}")
+        except TimeoutError:
+            bad("GET /api/events/stream", "timed out before connected event")
 
     print("=" * 60)
     print(f"Results: {PASS} passed, {FAIL} failed")
