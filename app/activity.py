@@ -192,3 +192,7 @@ def format_live_event(event: dict[str, Any], *, resource_title: str = "") -> dic
 
 def count_meaningful_events(events: list[dict[str, Any]]) -> int:
     return sum(1 for event in events if event.get("event_type") in MEANINGFUL_EVENT_TYPES)
+
+
+def batch_has_meaningful_events(batch: ActivityBatch) -> bool:
+    return any(event.event_type in MEANINGFUL_EVENT_TYPES for event in batch.events)

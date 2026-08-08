@@ -10,13 +10,14 @@ from uuid import UUID, uuid4
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Form, HTTPException, Request, status
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 
 from app.activity import (
     ActivityBatch,
     ActivityError,
+    batch_has_meaningful_events,
     events_since,
     format_live_event,
     recent_events,
@@ -107,6 +108,31 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+
+
+@app.exception_handler(Exception)
+async def unhandled_server_error(request: Request, exc: Exception) -> JSONResponse | HTMLResponse:
+    if isinstance(exc, HTTPException):
+        raise exc
+    log_event(
+        logger,
+        logging.ERROR,
+        "unhandled_server_error",
+        path=str(request.url.path),
+        error_type=type(exc).__name__,
+        error=str(exc),
+    )
+    if request.url.path.startswith("/api/"):
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"detail": "Something went wrong. Please try again in a moment."},
+        )
+    return templates.TemplateResponse(
+        request=request,
+        name="not-found.html",
+        context={"page_title": "Temporary issue"},
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+    )
 
 
 @app.middleware("http")
@@ -506,44 +532,88 @@ async def dashboard_page(request: Request) -> HTMLResponse:
     weekly_minutes_goal = (profile or {}).get("weekly_minutes") or 0
     access_token, _ = await resolve_access_token(request)
     goal = (profile or {}).get("career_goal") or ""
-    try:
-        activity = await recent_events(access_token or "", user["id"], limit=12)
-    except ActivityError as error:
-        activity_error = str(error)
-    try:
-        if goal:
+    token = access_token or ""
+
+    async def _fetch_activity() -> tuple[list[dict[str, Any]], str | None]:
+        try:
+            return await recent_events(token, user["id"], limit=12), None
+        except ActivityError as error:
+            return [], str(error)
+
+    async def _fetch_path_product_ids() -> list[str]:
+        if not goal:
+            return []
+        try:
             path_products = await list_products_for_goal(goal)
-            path_product_ids = [product["id"] for product in path_products]
-    except CatalogError:
-        path_product_ids = []
+            return [product["id"] for product in path_products]
+        except CatalogError:
+            return []
+
+    async def _fetch_progress() -> tuple[list[dict], str | None]:
+        try:
+            return await list_progress(token, user["id"]), None
+        except ProgressError as error:
+            return [], str(error)
+
+    async def _fetch_streak() -> int:
+        try:
+            return await learning_streak(token, user["id"])
+        except ProgressError:
+            return 0
+
+    async def _fetch_weekly_minutes() -> int:
+        try:
+            return await weekly_learning_minutes(token, user["id"])
+        except ProgressError:
+            return 0
+
+    async def _fetch_interest() -> tuple[dict[str, Any] | None, str | None]:
+        try:
+            return await get_interest_profile(token, user["id"]), None
+        except InterestProfileError as error:
+            return None, str(error)
+
+    async def _fetch_recommendation() -> tuple[dict[str, Any] | None, str | None]:
+        try:
+            return await latest_recommendation(token, user["id"]), None
+        except RecommendationError as error:
+            return None, str(error)
+
+    async def _fetch_recommendation_history() -> tuple[list[dict], str | None]:
+        try:
+            return await recommendation_history(token, user["id"]), None
+        except RecommendationError as error:
+            return [], str(error)
+
+    (
+        (activity, activity_error),
+        path_product_ids,
+        (progress_rows, progress_error),
+        learning_streak_days,
+        weekly_minutes_logged,
+        (interest_profile, interest_error),
+        (recommendation, recommendation_error),
+        (recommendation_history_rows, history_error),
+    ) = await asyncio.gather(
+        _fetch_activity(),
+        _fetch_path_product_ids(),
+        _fetch_progress(),
+        _fetch_streak(),
+        _fetch_weekly_minutes(),
+        _fetch_interest(),
+        _fetch_recommendation(),
+        _fetch_recommendation_history(),
+    )
+    if progress_error and not activity_error:
+        activity_error = progress_error
+    if history_error and not recommendation_error:
+        recommendation_error = history_error
+    progress_stats = progress_summary(progress_rows, path_product_ids)
     try:
-        progress_rows = await list_progress(access_token or "", user["id"])
-        progress_stats = progress_summary(progress_rows, path_product_ids)
-        learning_streak_days = await learning_streak(access_token or "", user["id"])
-        weekly_minutes_logged = await weekly_learning_minutes(access_token or "", user["id"])
-    except ProgressError as error:
-        if not activity_error:
-            activity_error = str(error)
-    try:
-        products_by_id = await _products_for_activity(access_token or "", activity)
+        products_by_id = await _products_for_activity(token, activity)
         activity = _activity_labels(activity, products_by_id)
     except CatalogError:
         pass
-    try:
-        interest_profile = await get_interest_profile(access_token or "", user["id"])
-    except InterestProfileError as error:
-        interest_error = str(error)
-    try:
-        recommendation = await latest_recommendation(access_token or "", user["id"])
-    except RecommendationError as error:
-        recommendation_error = str(error)
-    try:
-        recommendation_history_rows = await recommendation_history(
-            access_token or "", user["id"]
-        )
-    except RecommendationError as error:
-        if not recommendation_error:
-            recommendation_error = str(error)
     previous_recommendation = (
         recommendation_history_rows[1] if len(recommendation_history_rows) > 1 else None
     )
@@ -632,13 +702,19 @@ async def ingest_activity_events(
 
     refresh_recommended = False
     auto_generate = False
-    _, profile = await current_user_context(request)
     try:
-        interest = await refresh_interest_profile(access_token, user["id"], profile)
-        refresh_recommended = bool(interest.get("refresh_recommended"))
+        cached_profile = await get_interest_profile(access_token, user["id"])
+        meaningful_in_batch = batch_has_meaningful_events(batch)
+        refresh_recommended = bool(
+            (cached_profile or {}).get("refresh_recommended")
+            or meaningful_in_batch
+        )
         if refresh_recommended:
             cached = await latest_recommendation(access_token, user["id"])
-            auto_generate = should_auto_generate(interest, cached)
+            trigger_profile = dict(cached_profile or {})
+            if meaningful_in_batch:
+                trigger_profile["refresh_recommended"] = True
+            auto_generate = should_auto_generate(trigger_profile, cached)
     except (InterestProfileError, RecommendationError):
         pass
 
@@ -666,6 +742,7 @@ async def events_stream(request: Request) -> StreamingResponse:
         nonlocal new_since_visit_announced
         queue = signal_bus.subscribe(user["id"])
         cursor = datetime.now(timezone.utc) - timedelta(seconds=2)
+        poll_tick = 0
         yield _sse_message("connected", {"status": "ok"})
         try:
             while True:
@@ -674,8 +751,14 @@ async def events_stream(request: Request) -> StreamingResponse:
                 try:
                     payload = await asyncio.wait_for(queue.get(), timeout=2.0)
                     yield _sse_message("ingest", payload)
+                    poll_tick = 0
                 except asyncio.TimeoutError:
                     pass
+
+                poll_tick += 1
+                if poll_tick < 3:
+                    continue
+                poll_tick = 0
 
                 try:
                     rows = await events_since(access_token, user["id"], cursor, limit=20)
@@ -767,6 +850,10 @@ async def generate_recommendation_endpoint(request: Request) -> dict:
         history_rows = await recommendation_history(access_token, user["id"], limit=1)
         if history_rows:
             last_recommendation = history_rows[0]
+        try:
+            await refresh_interest_profile(access_token, user["id"], profile)
+        except InterestProfileError:
+            pass
         recommendation = await generate_recommendation(
             access_token,
             user["id"],
@@ -925,6 +1012,17 @@ async def explore_page(
         error = str(catalog_error)
     except VectorSyncError as vector_error:
         error = str(vector_error)
+    except Exception as search_error:
+        log_event(
+            logger,
+            logging.ERROR,
+            "explore_search_failed",
+            search=search.strip(),
+            error_type=type(search_error).__name__,
+            error=str(search_error),
+        )
+        error = "Search is temporarily unavailable. Try again or browse without search."
+        products = []
     categories = sorted({product.get("category", "") for product in products if product.get("category")})
     _, profile = await current_user_context(request)
     return templates.TemplateResponse(
