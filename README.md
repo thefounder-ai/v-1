@@ -6,6 +6,8 @@ SkillOrbit observes how learners browse, search, and engage with a real course c
 
 Built for the [SmartReco Build Challenge 2026](https://career.krishnaik.in/dashboard/hackathons?h=smartreco-build-challenge-2026).
 
+**Architecture guide:** [`ARCHITECTURE.md`](./ARCHITECTURE.md) — full system design, diagrams, flows, and test plan.
+
 ---
 
 ## Live
